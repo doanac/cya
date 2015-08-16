@@ -100,7 +100,11 @@ class TestConcurrently(unittest.TestCase):
         # we fail if file doesn't exist
         os.unlink(self.tmpfile)
         with self.assertRaises(OSError):
-            concurrently.json_get(self.tmpfile)
+            concurrently.json_get(self.tmpfile, False)
+
+        # we can also pass if requested
+        os.unlink(self.tmpfile)
+        self.assertEqual({}, concurrently.json_get(self.tmpfile, True))
 
         # we can read a good file
         concurrently.json_create(self.tmpfile, {'key': 'val'})
