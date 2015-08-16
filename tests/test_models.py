@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import unittest.mock
 
-from cya_server.models import load
+from cya_server.models import load, SecretField
 
 h1 = {
     'name': 'host_1',
@@ -19,8 +19,11 @@ h1 = {
 class TestModels(unittest.TestCase):
     def setUp(self):
         _, self.tmpfile = tempfile.mkstemp()
-        self.addCleanup(os.unlink, self.tmpfile)
-        os.unlink(self.tmpfile)
+        self.addCleanup(self.safe_unlink)
+
+    def safe_unlink(self):
+        if os.path.exists(self.tmpfile):
+            os.unlink(self.tmpfile)
 
     def test_empty_get(self):
         with load(read_only=True, models_file=self.tmpfile) as m:
@@ -47,3 +50,10 @@ class TestModels(unittest.TestCase):
         with load(read_only=True, models_file=self.tmpfile) as m:
             self.assertEqual(1, len(m.hosts[0].containers))
             self.assertEqual('c1', m.hosts[0].containers[0].name)
+
+    def test_secret(self):
+        sf = SecretField('test')
+        password = 'foobar'
+        hashed = sf.pre_save(password)
+        self.assertTrue(password != hashed)
+        self.assertTrue(sf.verify(password, hashed))

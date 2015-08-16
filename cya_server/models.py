@@ -1,9 +1,23 @@
 import contextlib
+import crypt
+import hmac
 import os
 
 from cya_server.settings import MODELS_FILE
 from cya_server.concurrently import json_data, json_get
 from cya_server.dict_model import Field, Model, ModelArrayField
+
+
+class SecretField(Field):
+    def __init__(self, name):
+        super(SecretField, self).__init__(
+            name, data_type=str, def_value='', required=False)
+
+    def pre_save(self, value):
+        return crypt.crypt(value, crypt.mksalt())
+
+    def verify(self, value, hashed):
+        return hmac.compare_digest(crypt.crypt(value, hashed), hashed)
 
 
 class Container(Model):
@@ -30,6 +44,7 @@ class Host(Model):
         Field('cpu_total', data_type=int),
         Field('cpu_type', data_type=str),
         Field('enlisted', data_type=bool, def_value=False, required=False),
+        SecretField('api_key'),
         ModelArrayField('containers', Container),
     ]
 
