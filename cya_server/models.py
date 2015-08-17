@@ -51,6 +51,12 @@ class Host(Model):
     def __repr__(self):
         return self.data['name']
 
+    def get_container(self, name):
+        for c in self.containers:
+            if c.name == name:
+                return c
+        raise ModelError('Container not found: %s' % name, 404)
+
 
 class ServerModel(Model):
     FIELDS = [
