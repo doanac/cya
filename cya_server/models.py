@@ -5,7 +5,7 @@ import os
 
 from cya_server.settings import MODELS_FILE
 from cya_server.concurrently import json_data, json_get
-from cya_server.dict_model import Field, Model, ModelArrayField
+from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
 
 
 class SecretField(Field):
@@ -56,6 +56,12 @@ class ServerModel(Model):
     FIELDS = [
         ModelArrayField('hosts', Host),
     ]
+
+    def get_host(self, name):
+        for x in self.hosts:
+            if x.name == name:
+                return x
+        raise ModelError('Host not found: %s' % name, 404)
 
 
 @contextlib.contextmanager
