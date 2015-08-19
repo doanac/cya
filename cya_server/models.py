@@ -45,7 +45,7 @@ class Host(Model):
         Field('cpu_type', data_type=str),
         Field('enlisted', data_type=bool, def_value=False, required=False),
         SecretField('api_key'),
-        ModelArrayField('containers', Container),
+        ModelArrayField('containers', Container, 'name'),
     ]
 
     def __repr__(self):
@@ -60,7 +60,7 @@ class Host(Model):
 
 class ServerModel(Model):
     FIELDS = [
-        ModelArrayField('hosts', Host),
+        ModelArrayField('hosts', Host, 'name'),
     ]
 
     def get_host(self, name):

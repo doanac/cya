@@ -7,6 +7,8 @@ DEBUG = bool(int(DEBUG))
 
 MODELS_FILE = os.path.join(_here, '../models.json')
 
+AUTO_ENLIST_HOSTS = True
+
 CONTAINER_TYPES = {
     'ubuntu-cloud': ['trusty', 'vivid', 'precise'],
     'debian': ['jessie'],

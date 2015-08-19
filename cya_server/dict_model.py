@@ -36,9 +36,10 @@ class _model_array_list(list):
 
 
 class ModelArrayField(Field):
-    def __init__(self, name, model_class):
+    def __init__(self, name, model_class, unique_model_attr=None):
         super(ModelArrayField, self).__init__(name, list, [], False)
         self.model_cls = model_class
+        self.unique_model_attr = unique_model_attr
 
     def validate(self, value):
         super(ModelArrayField, self).validate(value)
@@ -56,6 +57,12 @@ class ModelArrayField(Field):
 
     def create(self, val, data):
         self.model_cls(data)
+        if self.unique_model_attr:
+            for v in val:
+                if v[self.unique_model_attr] == data[self.unique_model_attr]:
+                    raise ModelError(
+                        'Item(%s) already exists' % v[self.unique_model_attr],
+                        409)
         val.append(data)
 
     def as_object(self, val):

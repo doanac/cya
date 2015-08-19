@@ -1,6 +1,6 @@
 from flask import jsonify, request
 
-from cya_server import app, models
+from cya_server import app, models, settings
 from cya_server.dict_model import ModelError
 
 
@@ -13,6 +13,19 @@ def _model_error_handler(error):
 def host_list():
     with models.load() as m:
         return jsonify({'hosts': [x.name for x in m.hosts]})
+
+
+@app.route('/api/v1/host/', methods=['POST'])
+def host_create():
+    if 'api_key' not in request.json:
+        raise models.ModelError('Missing required field: api_key')
+    request.json['enlisted'] = settings.AUTO_ENLIST_HOSTS
+    with models.load(read_only=False) as m:
+        m.hosts.create(request.json)
+    resp = jsonify({})
+    resp.status_code = 201
+    resp.headers['Location'] = '/api/v1/host/%s/' % request.json['name']
+    return resp
 
 
 @app.route('/api/v1/host/<string:name>/', methods=['GET'])
