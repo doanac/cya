@@ -1,7 +1,32 @@
+import functools
+
 from flask import jsonify, request
 
 from cya_server import app, models, settings
 from cya_server.dict_model import ModelError
+
+
+def host_authenticated(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        key = request.headers.get('Authorization', None)
+        if not key:
+            resp = jsonify({'Message': 'No Authorization header provided'})
+            resp.status_code = 401
+            return resp
+        parts = key.split(' ')
+        if len(parts) != 2 or parts[0] != 'Token':
+            resp = jsonify({'Message': 'Invalid Authorization header'})
+            resp.status_code = 401
+            return resp
+        with models.load(read_only=False) as m:
+            host = m.get_host(kwargs['name'])
+            if host.api_key_field.verify(parts[1], host.api_key):
+                resp = jsonify({'Message': 'Incorrect API key for host'})
+                resp.status_code = 401
+                return resp
+        return f(*args, **kwargs)
+    return wrapper
 
 
 @app.errorhandler(ModelError)
@@ -26,6 +51,25 @@ def host_create():
     resp.status_code = 201
     resp.headers['Location'] = '/api/v1/host/%s/' % request.json['name']
     return resp
+
+
+@app.route('/api/v1/host/<string:name>/', methods=['PATCH'])
+@host_authenticated
+def host_update(name):
+    if 'enlisted' in request.json:
+        raise ModelError('"enlisted" field cannot be updated via API')
+
+    with models.load(read_only=False) as m:
+        m.get_host(name).update(request.json)
+    return jsonify({})
+
+
+@app.route('/api/v1/host/<string:name>/', methods=['DELETE'])
+@host_authenticated
+def host_delete(name):
+    with models.load(read_only=False) as m:
+        m.get_host(name).delete()
+    return jsonify({})
 
 
 @app.route('/api/v1/host/<string:name>/', methods=['GET'])

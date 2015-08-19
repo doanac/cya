@@ -42,6 +42,13 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status_code, resp.status_code)
         return resp
 
+    def patch_json(self, url, data, api_key):
+        data = json.dumps(data)
+        headers = [('Authorization', 'Token ' + api_key)]
+        resp = self.app.patch(
+            url, data=data, headers=headers, content_type='application/json')
+        self.assertEqual(200, resp.status_code)
+
     def get_json(self, url, status_code=200):
         resp = self.app.get(url)
         self.assertEqual(200, resp.status_code)
@@ -61,6 +68,27 @@ class ApiTests(unittest.TestCase):
     def test_create_host_dup(self):
         self.post_json('/api/v1/host/', h1)
         self.post_json('/api/v1/host/', h1, 409)
+
+    def test_update_host(self):
+        resp = self.post_json('/api/v1/host/', h1)
+        self.assertEqual('http://localhost/api/v1/host/host_1/', resp.location)
+
+        self.patch_json(resp.location, {'cpu_total': 123}, h1['api_key'])
+        with models.load() as m:
+            self.assertEqual(1, len(m.hosts))
+            self.assertEqual('host_1', m.hosts[0].name)
+            self.assertEqual(123, m.hosts[0].cpu_total)
+
+    def test_delete_host(self):
+        resp = self.post_json('/api/v1/host/', h1)
+        self.assertEqual('http://localhost/api/v1/host/host_1/', resp.location)
+
+        headers = [('Authorization', 'Token ' + h1['api_key'])]
+        resp = self.app.delete(
+            resp.location, headers=headers, content_type='application/json')
+        with models.load() as m:
+            self.assertEqual(0, len(m.hosts))
+
 
 if __name__ == '__main__':
     unittest.main()
