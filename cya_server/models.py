@@ -23,11 +23,12 @@ class SecretField(Field):
 class Container(Model):
     FIELDS = [
         Field('name', data_type=str),
-        Field('template', data_type=str, def_value='ubuntu-cloud'),
-        Field('release', data_type=str, def_value='trusty', required=False),
+        Field('template', data_type=str, required=False),
+        Field('release', data_type=str, required=False),
         Field('init_script', data_type=str, required=False),
         Field('date_requested', int, required=False),
         Field('date_created', int, required=False),
+        Field('max_memory', int, required=False),
     ]
 
     def __repr__(self):

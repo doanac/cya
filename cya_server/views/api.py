@@ -76,7 +76,8 @@ def host_delete(name):
 def host_get(name):
     with models.load() as m:
         h = m.get_host(name)
-        if not request.args.get('with_containers') and 'containers' in h.data:
+        withcontainers = request.args.get('with_containers') is not None
+        if not withcontainers and 'containers' in h.data:
             del h.data['containers']
         if 'api_key' in h.data:
             del h.data['api_key']
