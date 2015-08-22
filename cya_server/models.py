@@ -2,8 +2,9 @@ import contextlib
 import crypt
 import hmac
 import os
+import time
 
-from cya_server.settings import MODELS_FILE
+from cya_server.settings import MODELS_FILE, CONTAINER_TYPES
 from cya_server.concurrently import json_data, json_get
 from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
 
@@ -33,6 +34,14 @@ class Container(Model):
 
     def __repr__(self):
         return self.data['name']
+
+    @staticmethod
+    def validate_template_release(template, release):
+        releases = CONTAINER_TYPES.get(template)
+        if not releases:
+            raise KeyError('Invalid template type: %s' % template)
+        if release not in releases:
+            raise KeyError('Invalid release for template: %s' % release)
 
 
 class Host(Model):
@@ -69,6 +78,36 @@ class ServerModel(Model):
             if x.name == name:
                 return x
         raise ModelError('Host not found: %s' % name, 404)
+
+    def find_best_host(self):
+        '''way too simplistic way to find a good host. should try and determine
+        when a host seems to be offline and find the 2nd best etc
+        '''
+        best_host = None
+        best_count = 0
+        for h in self.hosts:
+            count = len(h.containers)
+            if not best_host or count < best_count:
+                best_host = h
+                best_count = count
+        return best_host
+
+    def create_container(self, name, template, release, max_mem, init_script):
+        Container.validate_template_release(template, release)
+        h = self.find_best_host()
+        data = {
+            'name': name,
+            'template': template,
+            'release': release,
+            'init_script': init_script,
+            'max_memory': max_mem,
+            'date_requested': int(time.time()),
+        }
+        # TODO this is tied to find_best_host being dumb, these should get
+        # queued and not be tied to a host instantly, or moving a container
+        # that doesn't get created within some amount of time
+        h.containers.create(data)
+        return h
 
 
 @contextlib.contextmanager
