@@ -1,5 +1,6 @@
 import contextlib
 import crypt
+import datetime
 import hmac
 import os
 import time
@@ -31,6 +32,20 @@ class Container(Model):
         Field('date_created', int, required=False),
         Field('max_memory', int, required=False),
     ]
+
+    @property
+    def requested_str(self):
+        v = self.date_requested
+        if v:
+            return datetime.datetime.fromtimestamp(v)
+        return '?'
+
+    @property
+    def created_str(self):
+        v = self.date_created
+        if v:
+            return datetime.datetime.fromtimestamp(v)
+        return '?'
 
     def __repr__(self):
         return self.data['name']

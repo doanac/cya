@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block body %}
+  <h2>CYA Hosts</h2>
+  <table class="table table-striped">
+  <tr>
+    <th>Name</th><th>Enlisted</th><th>Release</th><th>Memory</th><th>CPU's</th><th>Arch</th><th>Containers</th>
+  </tr>
+  {% for h in hosts %}
+    <tr>
+      <td><a href="{{url_for('host', name=h.name)}}">{{h.name}}</a></td>
+      <td>{{h.enlisted}}</td>
+      <td>{{h.distro_codename}}</td>
+      <td>{{h.mem_total|filesizeformat}}</td>
+      <td>{{h.cpu_total}}</td>
+      <td>{{h.cpu_type}}</td>
+      <td>{{h.containers|length}}</td>
+    </tr>
+  {% endfor %}
+  </table>
+{% endblock %}
