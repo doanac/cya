@@ -83,9 +83,19 @@ class Host(Model):
         raise ModelError('Container not found: %s' % name, 404)
 
 
+class User(Model):
+    FIELDS = [
+        Field('email', data_type=str),
+        Field('nickname', data_type=str),
+        Field('openid', data_type=str),
+        Field('approved', data_type=bool, def_value=False),
+    ]
+
+
 class ServerModel(Model):
     FIELDS = [
         ModelArrayField('hosts', Host, 'name'),
+        ModelArrayField('users', User, 'email'),
     ]
 
     def get_host(self, name):
@@ -93,6 +103,12 @@ class ServerModel(Model):
             if x.name == name:
                 return x
         raise ModelError('Host not found: %s' % name, 404)
+
+    def get_user_by_openid(self, openid):
+        for x in self.users:
+            if x.openid == openid:
+                return x
+        return None
 
     def find_best_host(self):
         '''way too simplistic way to find a good host. should try and determine
