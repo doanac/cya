@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block body %}
-  <h2>CYA Hosts</h2>
+  <h2>Hosts</h2>
   <table class="table table-striped">
   <tr>
     <th>Name</th><th>Enlisted</th><th>Release</th><th>Memory</th><th>CPU's</th><th>Arch</th><th>Containers</th>
@@ -17,5 +17,21 @@
       <td>{{h.containers|length}}</td>
     </tr>
   {% endfor %}
+  </table>
+
+  <h2>Containers</h2>
+  <table class="table table-striped">
+    <tr><th>Host</th><th>Name</th><th>Template</th><th>Release</th><th>Created</th></tr>
+    {% for h in hosts %}
+    {% for c in h.containers %}
+    <tr>
+      <td><a href="{{url_for('host', name=h.name)}}">{{h.name}}</a></td>
+      <td>{{c.name}}</td>
+      <td>{{c.template}}</td>
+      <td>{{c.release}}</td>
+      <td>{{c.created_str}}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
   </table>
 {% endblock %}
