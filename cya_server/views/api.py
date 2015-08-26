@@ -97,3 +97,13 @@ def host_container_get(name, c):
         h = m.get_host(name)
         c = h.get_container(c)
         return jsonify(c.data)
+
+
+@app.route('/api/v1/host/<string:name>/container/<string:c>/',
+           methods=['PATCH'])
+@host_authenticated
+def host_container_update(name, c):
+    with models.load(read_only=False) as m:
+        h = m.get_host(name)
+        h.get_container(c).update(request.json)
+    return jsonify({})

@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block body %}
+<h3>Create New Container</h3>
+<form action="{{ url_for('create_container') }}" method=post>
+  <div class="form-group">
+    <label for="name">Name</label>
+    <input type="string" class="form-control" name="name" placeholder="Name">
+  </div>
+  <div class="form-group">
+    <label for="container-type">Container Type</label>
+    <select name="container-type" class="form-control">
+    {% for template, releases in container_types.items() %}
+      {% for release in releases %}
+      <option value={{template}}:{{release}}>{{template}} - {{release}}</option>
+      {% endfor %}
+    {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="max-memory">Container Type</label>
+    <select name="max-memory" class="form-control">
+      <option value="1">1G</option>
+      <option value="2">2G</option>
+      <option value="4">4G</option>
+      <option value="8">8G</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="init-script">Init Script</label>
+    <textarea name="init-script" class="form-control" rows="10"></textarea>
+  </div>
+  <input type="submit" class="btn btn-default" value="Submit"/>
+</form>
+{% endblock %}

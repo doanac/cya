@@ -76,7 +76,7 @@ def _container_props(name):
     c = lxc.Container(name)
     max_mem = c.get_config_item('lxc.cgroup.memory.limit_in_bytes')
     if max_mem:
-        max_mem = int(max_mem)
+        max_mem = int(max_mem[0])
     else:
         max_mem = 0
     return {
@@ -96,8 +96,13 @@ def _register_host(args):
     _post('/api/v1/host/', data)
 
 
-def _update_host(args):
+def _update_host(args, with_containers=False):
     data = _host_props()
+    if with_containers:
+        containers = []
+        for c in lxc.list_containers():
+            containers.append(_container_props(c))
+        data['containers'] = containers
     _patch('/api/v1/host/%s/' % settings.HOST_NAME, data)
 
 
@@ -106,14 +111,26 @@ def _create_container(container_props):
     ct = lxc.Container(container_props['name'])
     ct.create(container_props['template'],
               args={'release': container_props['release']})
+    mem = container_props.get('max_memory')
+    if mem:
+        ct.set_config_item('lxc.cgroup.memory.limit_in_bytes', str(mem))
+        ct.save_config()
     init = container_props.get('init_script')
     if init:
         path = os.path.join(ct.get_config_item('lxc.rootfs'), 'cya_init')
         with open(path, 'w') as f:
             f.write(init)
             os.fchmod(f.fileno(), stat.S_IRWXG)
-        ct.start(cmd=('/cya_init',))
-    ct.start()
+        if not ct.start(daemonize=False, cmd=('/cya_init',)):
+            log.error('unable to run init_script')
+
+    if not ct.start():
+        log.error('unable to start container')
+
+
+def _update_container(name):
+    data = _container_props(name)
+    _patch('/api/v1/host/%s/container/%s/' % (settings.HOST_NAME, name), data)
 
 
 def _check(args):
@@ -128,6 +145,8 @@ def _check(args):
     for x in to_add:
         print('Creating: container: %s' % x)
         _create_container(rem_containers[x])
+        log.debug('updating container info on server')
+        _update_container(x)
 
     for x in to_del:
         print('TODO del container: %s' % x)

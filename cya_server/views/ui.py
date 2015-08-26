@@ -76,7 +76,7 @@ def index():
 
 
 @app.route('/settings/')
-def settings():
+def user_settings():
     if g.user is None or 'openid' not in session:
         return redirect(url_for('login'))
     return render_template('settings.html')
@@ -87,3 +87,23 @@ def host(name):
     with models.load(read_only=True) as m:
         h = m.get_host(name)
     return render_template('host.html', host=h)
+
+
+@app.route('/create_container/', methods=['POST', 'GET'])
+def create_container():
+    if g.user is None or 'openid' not in session:
+        flash('You must be logged in to create a container')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        template, release = request.form['container-type'].split(':')
+        max_mem = int(request.form['max-memory']) * 1000000000
+        init_script = request.form['init-script'].replace('\r', '')
+        with models.load(read_only=False) as m:
+            m.create_container(
+                request.form['name'], template, release, max_mem, init_script)
+        flash('Container requested')
+        return redirect(url_for('index'))
+
+    return render_template(
+        'create_container.html', container_types=settings.CONTAINER_TYPES)

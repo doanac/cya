@@ -1,6 +1,11 @@
 {% extends "layout.html" %}
 
 {% block body %}
+  {% if session.openid %}
+  <a href="{{ url_for('create_container') }}" class="btn btn-default" role="button">
+    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Create Container
+  </a>
+  {% endif %}
   <h2>Hosts</h2>
   <table class="table table-striped">
   <tr>
