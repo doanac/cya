@@ -1,4 +1,5 @@
 import os
+import textwrap
 
 _here = os.path.realpath(os.path.dirname(__file__))
 
@@ -16,3 +17,16 @@ CONTAINER_TYPES = {
     'ubuntu-cloud': ['trusty', 'vivid', 'precise'],
     'debian': ['jessie'],
 }
+
+INIT_SCRIPTS = [
+    {
+        'name': 'ubuntu-cloud ssh-import keys',
+        'content': textwrap.dedent('''\
+            #!/bin/sh
+            cat >/etc/cloud/cloud.cfg.d/99_cya.cfg <<EOF
+            runcmd:
+              - sudo -i -u ubuntu ssh-import-id YOUR_USERNAME
+            EOF
+        ''')
+    },
+]

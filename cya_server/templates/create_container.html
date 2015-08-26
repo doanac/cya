@@ -26,8 +26,20 @@
     </select>
   </div>
   <div class="form-group">
+    <label for="init-script-template">Init Script Template</label>
+    <select name="init-script-template" class="form-control">
+      <option onclick='document.getElementById("init-script").value=""' selected=true>Empty (fill in as you like)</option>
+    {% for script in common_init_scripts %}
+      <option onclick='document.getElementById("init-script").value={{script.content|tojson}}'>{{script.name}}</option>
+    {% endfor %}
+    {% for script in g.user.init_scripts %}
+      <option onclick='document.getElementById("init-script").value={{script.content|tojson}}'>{{script.name}}</option>
+    {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
     <label for="init-script">Init Script</label>
-    <textarea name="init-script" class="form-control" rows="10"></textarea>
+    <textarea id="init-script" name="init-script" class="form-control" rows="10"></textarea>
   </div>
   <input type="submit" class="btn btn-default" value="Submit"/>
 </form>

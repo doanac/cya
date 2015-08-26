@@ -105,5 +105,6 @@ def create_container():
         flash('Container requested')
         return redirect(url_for('index'))
 
-    return render_template(
-        'create_container.html', container_types=settings.CONTAINER_TYPES)
+    return render_template('create_container.html',
+                           common_init_scripts=settings.INIT_SCRIPTS,
+                           container_types=settings.CONTAINER_TYPES)

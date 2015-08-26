@@ -83,12 +83,20 @@ class Host(Model):
         raise ModelError('Container not found: %s' % name, 404)
 
 
+class InitScript(Model):
+    FIELDS = [
+        Field('name', data_type=str),
+        Field('content', data_type=str),
+    ]
+
+
 class User(Model):
     FIELDS = [
         Field('email', data_type=str),
         Field('nickname', data_type=str),
         Field('openid', data_type=str),
         Field('approved', data_type=bool, def_value=False),
+        ModelArrayField('init_scripts', InitScript, 'name'),
     ]
 
 
