@@ -75,10 +75,20 @@ def index():
     return render_template('index.html', hosts=hosts)
 
 
-@app.route('/settings/')
+@app.route('/settings/', methods=['POST', 'GET'])
 def user_settings():
     if g.user is None or 'openid' not in session:
         return redirect(url_for('login'))
+    if request.method == 'POST':
+        names = request.form.getlist('script-name')
+        scripts = request.form.getlist('script-content')
+        data = [{'name': x[0], 'content': x[1]} for x in zip(names, scripts)]
+        with models.load(read_only=False) as m:
+            u = m.get_user_by_openid(g.user.openid)
+            u.init_scripts.replace(data)
+            g.user = u
+            return redirect(url_for('user_settings'))
+
     return render_template('settings.html')
 
 

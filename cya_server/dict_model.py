@@ -55,6 +55,12 @@ class ModelArrayField(Field):
     def delete(val, item):
         val.remove(item)
 
+    def replace(self, val, data):
+        for d in data:
+            self.model_cls(d)
+        val.clear()
+        val.extend(data)
+
     def create(self, val, data):
         self.model_cls(data)
         if self.unique_model_attr:
@@ -68,6 +74,7 @@ class ModelArrayField(Field):
     def as_object(self, val):
         objects = _model_array_list()
         objects.create = functools.partial(self.create, val)
+        objects.replace = functools.partial(self.replace, val)
         for x in val:
             o = self.model_cls(x)
             o.delete = functools.partial(self.delete, val, x)
