@@ -15,7 +15,7 @@ from multiprocessing import cpu_count
 
 import lxc
 
-from cya_client import settings
+import settings
 
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
 log = logging.getLogger('cya-client')

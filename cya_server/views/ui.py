@@ -1,3 +1,7 @@
+import os
+import subprocess
+import tempfile
+
 from flask import (
     g, flash, redirect, render_template, request, session, url_for
 )
@@ -118,3 +122,23 @@ def create_container():
     return render_template('create_container.html',
                            common_init_scripts=settings.INIT_SCRIPTS,
                            container_types=settings.CONTAINER_TYPES)
+
+
+@app.route('/git_bundle')
+def git_bundle():
+    here = os.path.dirname(__file__)
+    with tempfile.NamedTemporaryFile() as f:
+        subprocess.check_call(
+            ['git', 'bundle', 'create', f.name, '--all'], cwd=here)
+        with open(f.name, 'rb') as f:
+            return f.read()
+
+
+@app.route('/client_install.sh')
+def install_script():
+    base = url_for('index', _external=True)
+    if base.endswith('/'):
+        base = base[:-1]
+    bundle = url_for('git_bundle', _external=True)
+    return render_template(
+        'client_install.sh', base_url=base, bundle_url=bundle)

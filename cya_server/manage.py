@@ -14,7 +14,7 @@ def _run(args):
     app.run(args.host, args.port)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         description='Manage cya application')
 
@@ -34,3 +34,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     args.func(args)
+
+if __name__ == '__main__':
+    main()
