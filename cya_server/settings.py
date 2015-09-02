@@ -32,9 +32,10 @@ OPENID_STORE = os.path.join(_here, '../.openid')
 AUTO_ENLIST_HOSTS = True
 
 
+LOCAL_SETTINGS = os.path.join(_here, 'local_settings.conf')
 _settings_files = (
     '/etc/cya_server.conf',
-    os.path.join(_here, 'local_settings.conf'),
+    LOCAL_SETTINGS,
 )
 
 
@@ -45,7 +46,11 @@ for fname in _settings_files:
                 line = line.strip()
                 if line and line[0] != '#':
                     key, val = line.split('=', 2)
-                    globals()[key.strip()] = val.strip()
+                    key = key.strip()
+                    val = val.strip()
+                    if val.lower() in ('true', 'false'):
+                        val = val.lower() == 'true'
+                    globals()[key] = val
 
 if not SECRET_KEY:
     local_settings = _settings_files[-1]
@@ -54,6 +59,6 @@ if not SECRET_KEY:
     import random
     with open(local_settings, 'a') as f:
         SECRET_KEY = ''.join(
-            random.choice(string.printable) for _ in range(16))
-        SECRET_KEY = SECRET_KEY.replace('\n', '_')
+            random.choice(
+                string.ascii_letters + string.digits) for _ in range(16))
         f.write('\n# Randomly generated:\nSECRET_KEY = %s\n' % SECRET_KEY)

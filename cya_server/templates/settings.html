@@ -40,4 +40,24 @@ function addScript() {
     <br/>
     <input type="submit" class="btn btn-default" value="Submit"/>
   </form>
+{% if g.user.admin %}
+  <h3>Global Settings</h3>
+  <form action="{{ url_for('global_settings') }}" method=post>
+    <table class="table table-condensed">
+      <tr>
+        <th>Debug</th>
+	<td><input name="DEBUG" type="checkbox" {%if settings.DEBUG%}checked{%endif%}/></td>
+      </tr>
+      <tr>
+        <th>Auto Approve Users</th>
+	<td><input name="AUTO_APPROVE_USER" type="checkbox" {%if settings.AUTO_APPROVE_USER%}checked{%endif%}/></td>
+      </tr>
+      <tr>
+        <th>Auto Enlist Hosts</th>
+	<td><input name="AUTO_ENLIST_HOSTS" type="checkbox" {%if settings.AUTO_ENLIST_HOSTS%}checked{%endif%}/></td>
+      </tr>
+    </table>
+    <input type="submit" class="btn btn-default" value="Submit"/>
+  </form>
+{% endif %}
 {% endblock %}

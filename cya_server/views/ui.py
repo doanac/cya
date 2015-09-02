@@ -7,7 +7,7 @@ from flask import (
 )
 from flask.ext.openid import OpenID
 
-from cya_server import app, models, settings
+from cya_server import app, concurrently, models, settings
 
 oid = OpenID(app, settings.OPENID_STORE, safe_roots=[])
 
@@ -93,7 +93,41 @@ def user_settings():
             g.user = u
             return redirect(url_for('user_settings'))
 
-    return render_template('settings.html')
+    with models.load(read_only=True) as m:
+        return render_template(
+            'settings.html', settings=settings, users=m.users)
+
+
+@app.route('/global_settings/', methods=['POST'])
+def global_settings():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+
+    updates = {}
+    fields = ['DEBUG', 'AUTO_ENLIST_HOSTS', 'AUTO_APPROVE_USER']
+    for f in fields:
+        v = request.form.get(f, False)
+        if v == 'on':
+            v = True
+        if getattr(settings, f) != v:
+            updates[f] = v
+
+    lines = []
+    with concurrently.open_for_write(settings.LOCAL_SETTINGS, True) as f:
+        f.seek(0)
+        for line in f:
+            if line.strip() not in updates.keys():
+                lines.append(line)
+        f.seek(0)
+        f.truncate()
+        for line in lines:
+            f.write(line)
+        f.write('\n')
+        for key, val in updates.items():
+            f.write('%s = %s\n' % (key, val))
+            setattr(settings, key, val)
+
+    return redirect(url_for('user_settings'))
 
 
 @app.route('/host/<string:name>/')
