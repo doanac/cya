@@ -96,6 +96,7 @@ class User(Model):
         Field('nickname', data_type=str),
         Field('openid', data_type=str),
         Field('approved', data_type=bool, def_value=False),
+        Field('admin', data_type=bool, def_value=False, required=False),
         ModelArrayField('init_scripts', InitScript, 'name'),
     ]
 

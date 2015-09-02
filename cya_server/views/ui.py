@@ -130,6 +130,24 @@ def global_settings():
     return redirect(url_for('user_settings'))
 
 
+@app.route('/user_admin/', methods=['POST'])
+def user_admin():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+    if not g.user.admin:
+        flash('you must be an admin to try and edit users')
+        return redirect(url_for('login'))
+
+    with models.load(read_only=False) as m:
+        for u in m.users:
+            data = {'approved': False, 'admin': False}
+            data['approved'] = request.form.get('approved-' + u.openid) == 'on'
+            data['admin'] = request.form.get('admin-' + u.openid) == 'on'
+            u.update(data)
+
+    return redirect(url_for('user_settings'))
+
+
 @app.route('/host/<string:name>/')
 def host(name):
     with models.load(read_only=True) as m:
