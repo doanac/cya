@@ -57,3 +57,14 @@ class TestModels(unittest.TestCase):
         hashed = sf.pre_save(password)
         self.assertTrue(password != hashed)
         self.assertTrue(sf.verify(password, hashed))
+
+    def test_secret_create(self):
+        data = h1.copy()
+        data['api_key'] = '123'
+        with load(read_only=False, models_file=self.tmpfile) as m:
+            self.assertEqual(0, len(m.hosts))
+            m.hosts.create(data)
+        with load(read_only=True, models_file=self.tmpfile) as m:
+            self.assertNotEqual('123', m.hosts[0].api_key)
+            self.assertTrue(
+                m.hosts[0].api_key_field.verify('123', m.hosts[0].api_key))

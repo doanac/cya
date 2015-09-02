@@ -62,13 +62,14 @@ class ModelArrayField(Field):
         val.extend(data)
 
     def create(self, val, data):
-        self.model_cls(data)
+        m = self.model_cls(data)
         if self.unique_model_attr:
             for v in val:
                 if v[self.unique_model_attr] == data[self.unique_model_attr]:
                     raise ModelError(
                         'Item(%s) already exists' % v[self.unique_model_attr],
                         409)
+        m.update(data)  # ensure pre_save gets run
         val.append(data)
 
     def as_object(self, val):
@@ -105,6 +106,7 @@ class Model(object):
             try:
                 field = getattr(self, key + '_field')
                 field.validate(value)
+                data[key] = field.pre_save(value)
             except AttributeError:
                 raise ModelError('Unknown field: %s' % key)
         self.data.update(data)

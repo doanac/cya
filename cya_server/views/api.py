@@ -21,7 +21,7 @@ def host_authenticated(f):
             return resp
         with models.load(read_only=False) as m:
             host = m.get_host(kwargs['name'])
-            if host.api_key_field.verify(parts[1], host.api_key):
+            if not host.api_key_field.verify(parts[1], host.api_key):
                 resp = jsonify({'Message': 'Incorrect API key for host'})
                 resp.status_code = 401
                 return resp
