@@ -149,7 +149,9 @@ def _check(args):
         _update_container(x)
 
     for x in to_del:
-        print('TODO del container: %s' % x)
+        c = lxc.Container(x)
+        c.stop()
+        c.destroy()
 
 
 def main(args):

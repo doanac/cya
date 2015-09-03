@@ -176,6 +176,22 @@ def create_container():
                            container_types=settings.CONTAINER_TYPES)
 
 
+@app.route('/remove_container/', methods=['POST'])
+def remove_container():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+    if not g.user.admin:
+        flash('you must be an admin to try and edit users')
+        return redirect(url_for('login'))
+
+    with models.load(read_only=False) as m:
+        host = m.get_host(request.form['host'])
+        container = host.get_container(request.form['name'])
+        container.delete()
+        flash('Deleted container: %s' % request.form['name'])
+    return redirect(url_for('host', name=request.form['host']))
+
+
 @app.route('/git_bundle')
 def git_bundle():
     here = os.path.dirname(__file__)
