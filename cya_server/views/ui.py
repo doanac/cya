@@ -53,13 +53,16 @@ def create_user():
         return redirect(url_for('index'))
     with models.load(read_only=False) as m:
         approved = settings.AUTO_APPROVE_USER
+        admin = False
         if len(m.users) == 0:
             approved = True
+            admin = True
         m.users.create({
             'email': request.values['email'],
             'nickname': request.values['name'],
             'openid': session['openid'],
             'approved': approved,
+            'admin': admin,
         })
     flash('Profile successfully created')
     return redirect(oid.get_next_url())
