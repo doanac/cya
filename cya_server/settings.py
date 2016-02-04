@@ -7,7 +7,7 @@ DEBUG = os.environ.get('DEBUG', '0')
 DEBUG = bool(int(DEBUG))
 
 CONTAINER_TYPES = {
-    'ubuntu-cloud': ['trusty', 'vivid', 'precise'],
+    'ubuntu-cloud': ['trusty', 'vivid', 'wily', 'precise'],
     'debian': ['jessie'],
 }
 
