@@ -177,6 +177,6 @@ def get_args():
 
 
 if __name__ == '__main__':
-    if not os.geteuid() == 0 or 'SUDO_USER' not in os.environ:
+    if os.geteuid() != 0 and 'SUDO_USER' not in os.environ:
         sys.exit('Must be root or sudo to execute')
     main(get_args())
