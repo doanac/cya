@@ -31,6 +31,7 @@ class Container(Model):
         Field('date_requested', int, required=False),
         Field('date_created', int, required=False),
         Field('max_memory', int, required=False),
+        Field('re_create', data_type=bool, def_value=False, required=False),
     ]
 
     @property
@@ -46,6 +47,11 @@ class Container(Model):
         if v:
             return datetime.datetime.fromtimestamp(v)
         return '?'
+
+    def update(self, data):
+        if data.get('date_created', 0) > self.date_created:
+            data['re_create'] = False
+        return super(Container, self).update(data)
 
     def __repr__(self):
         return self.data['name']

@@ -20,6 +20,24 @@ function removeContainer(container) {
   document.body.appendChild(form);
   form.submit();
 }
+function reCreateContainer(container) {
+  var form = document.createElement("form");
+  form.setAttribute("method", "post");
+  form.setAttribute("action", "{{url_for('recreate_container')}}");
+  var hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "host");
+  hiddenField.setAttribute("value", "{{host.name}}");
+  form.appendChild(hiddenField);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "name");
+  hiddenField.setAttribute("value", container);
+  form.appendChild(hiddenField);
+  document.body.appendChild(form);
+  form.submit();
+}
 </script>
   <h2>CYA Host: {{host.name}}</h2>
   <table class="table table-condensed">
@@ -32,7 +50,7 @@ function removeContainer(container) {
   <h3>Containers</h3>
   <table class="table table-striped">
     <tr><th>Name</th><th>Template</th><th>Release</th><th>Requested</th>
-        <th>Created</th><th>Max Mem</th><th>Init Script</th><th>Remove</th></tr>
+        <th>Created</th><th>Max Mem</th><th>Init Script</th><th>Remove/Re-Create</th></tr>
     {% for c in host.containers %}
     <tr>
       <td>{{c.name}}</td>
@@ -50,6 +68,9 @@ function removeContainer(container) {
       <td>
         <button onclick="removeContainer('{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
           <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+        </button>
+        <button onclick="reCreateContainer('{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
+          <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
         </button>
       </td>
     </tr>

@@ -179,12 +179,28 @@ def create_container():
                            container_types=settings.CONTAINER_TYPES)
 
 
+@app.route('/recreate_container/', methods=['POST'])
+def recreate_container():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+    if not g.user.admin:
+        flash('you must be an admin to re-create a container')
+        return redirect(url_for('login'))
+
+    with models.load(read_only=False) as m:
+        host = m.get_host(request.form['host'])
+        container = host.get_container(request.form['name'])
+        container.update({'re_create': True})
+        flash('Container re-created: %s' % request.form['name'])
+    return redirect(url_for('host', name=request.form['host']))
+
+
 @app.route('/remove_container/', methods=['POST'])
 def remove_container():
     if g.user is None or 'openid' not in session:
         return redirect(url_for('login'))
     if not g.user.admin:
-        flash('you must be an admin to try and edit users')
+        flash('you must be an admin to create a container')
         return redirect(url_for('login'))
 
     with models.load(read_only=False) as m:

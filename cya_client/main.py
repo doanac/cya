@@ -143,6 +143,18 @@ def _check(args):
     to_add = rem_names - local_names
     to_del = local_names - rem_names
 
+    for x in rem_names & local_names:
+        if rem_containers[x].get('re_create'):
+            print('Re-creating container: %s' % x)
+            c = lxc.Container(x)
+            log.debug('stopping')
+            c.stop()
+            log.debug('destroying')
+            c.destroy()
+            _create_container(rem_containers[x])
+            log.debug('updating container info on server')
+            _update_container(x)
+
     for x in to_add:
         print('Creating: container: %s' % x)
         _create_container(rem_containers[x])
