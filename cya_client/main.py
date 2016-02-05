@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import fcntl
 import json
 import logging
 import os
@@ -179,4 +180,12 @@ def get_args():
 if __name__ == '__main__':
     if os.geteuid() != 0 and 'SUDO_USER' not in os.environ:
         sys.exit('Must be root or sudo to execute')
-    main(get_args())
+
+    # Ensure no other copy of this script is running
+    with open('/tmp/cya_client.lock', 'w+') as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except IOError:
+            log.debug('Script is already running')
+            sys.exit(0)
+        main(get_args())
