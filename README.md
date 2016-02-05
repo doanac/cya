@@ -16,6 +16,11 @@ Setting Up The Server
 * Clone the repo to your favorite place like /srv/cya or /usr/local/cya.
 * Run your distro script: sudo ./distro/trusty_install.sh
 * Start the server with "sudo start cya"
+* log into to server at http://<server>:8000/
+
+The initial user that logs in via OpenID will automatically be an admin. From
+the settings page you can create your own script to be run when containers are
+created.
 
 Setting Up The Client(s)
 ------------------------
@@ -26,3 +31,24 @@ Setting Up The Client(s)
 
 The register step will import all local containers into the cya server so they
 can be managed from there.
+
+Example Init Script
+-------------------
+
+Here's a script I use at home to set up my Ubuntu containers with::
+
+ #!/bin/sh
+
+ cat >/etc/cloud/cloud.cfg.d/99_doanac.cfg <<EOF
+ runcmd:
+   - usermod -g users ubuntu
+   - sudo -i -u ubuntu ssh-import-id doanac
+   - echo "0,30 * * * * ubuntu ssh-import-id doanac" > /etc/cron.d/sshkey-sync
+   - mkdir /code /storage
+   - echo "reckless:/code   /code   nfs    auto  0  0" >> /etc/fstab
+   - echo "storage:/home   /storage   nfs    auto  0  0" >> /etc/fstab
+   - apt-get update
+   - apt-get install -y ssl-cert git
+   - apt-get install -y nfs-common
+   - mount -a
+ EOF

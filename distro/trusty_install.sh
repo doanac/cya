@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/bin/sh -x
 
 apt-get install -y python3-flask
 
 # deps not in ubuntu
 wget http://ftp.us.debian.org/debian/pool/main/p/python3-openid/python3-openid_3.0.2+git20140828-1_all.deb
-wget http://ftp.us.debian.org/debian/pool/main/f/flask-openid/python3-flask-openid_1.2.4+dfsg-2_all.deb
+wget http://ftp.us.debian.org/debian/pool/main/f/flask-openid/python3-flask-openid_1.2.5+dfsg-2_all.deb
 dpkg -i python3-*.deb
 rm python3-*.deb
 
