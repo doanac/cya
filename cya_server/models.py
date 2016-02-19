@@ -49,7 +49,8 @@ class Container(Model):
         return '?'
 
     def update(self, data):
-        if data.get('date_created', 0) > self.date_created:
+        if self.date_created and \
+                data.get('date_created', 0) > self.date_created:
             data['re_create'] = False
         return super(Container, self).update(data)
 
