@@ -12,18 +12,37 @@ import urllib.error
 import urllib.request
 import urllib.parse
 
+from configparser import ConfigParser
 from multiprocessing import cpu_count
 
 import lxc
 
-import settings
+config_file = os.path.join(os.path.dirname(__file__), 'settings.conf')
+config = ConfigParser()
+config.read([config_file])
 
-logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
+logging.basicConfig(
+    level=getattr(logging, config.get('cya', 'log_level', fallback='INFO')))
 log = logging.getLogger('cya-client')
 
 
+def _create_conf(server_url):
+    import string
+    import random
+    config.add_section('cya')
+    config['cya']['server_url'] = server_url
+    config['cya']['log_level'] = 'INFO'
+    chars = string.ascii_letters + string.digits + '!@#$%^&*~'
+    config['cya']['host_api_key'] =\
+        ''.join(random.choice(chars) for _ in range(32))
+    with open('/etc/hostname') as f:
+        config['cya']['hostname'] = f.read().strip()
+    with open(config_file, 'w') as f:
+        config.write(f, True)
+
+
 def _http_resp(resource, headers=None, data=None, method=None):
-    url = urllib.parse.urljoin(settings.CYA_SERVER_URL, resource)
+    url = urllib.parse.urljoin(config.get('cya', 'server_url'), resource)
     req = urllib.request.Request(
         url, data=data, headers=headers, method=method)
     try:
@@ -53,7 +72,7 @@ def _patch(resource, data):
     data = json.dumps(data).encode('utf8')
     headers = {
         'content-type': 'application/json',
-        'Authorization': 'Token ' + settings.HOST_API_KEY,
+        'Authorization': 'Token ' + config.get('cya', 'host_api_key')
     }
     return _http_resp(resource, headers, data, method='PATCH')
 
@@ -62,8 +81,8 @@ def _host_props():
     mem = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
     distro, release, name = platform.dist()
     return {
-        'name': settings.HOST_NAME,
-        'api_key': settings.HOST_API_KEY,
+        'name': config.get('cya', 'hostname'),
+        'api_key': config.get('cya', 'host_api_key'),
         'cpu_total': cpu_count(),
         'cpu_type': platform.processor(),
         'mem_total': mem,
@@ -88,8 +107,9 @@ def _container_props(name):
 
 
 def _register_host(args):
+    _create_conf(args.server_url)
     data = _host_props()
-    data['api_key'] = settings.HOST_API_KEY
+    data['api_key'] = config.get('cya', 'host_api_key')
     containers = []
     for c in lxc.list_containers():
         containers.append(_container_props(c))
@@ -104,7 +124,7 @@ def _update_host(args, with_containers=False):
         for c in lxc.list_containers():
             containers.append(_container_props(c))
         data['containers'] = containers
-    _patch('/api/v1/host/%s/' % settings.HOST_NAME, data)
+    _patch('/api/v1/host/%s/' % config.get('cya', 'hostname'), data)
 
 
 def _create_container(container_props):
@@ -131,11 +151,13 @@ def _create_container(container_props):
 
 def _update_container(name):
     data = _container_props(name)
-    _patch('/api/v1/host/%s/container/%s/' % (settings.HOST_NAME, name), data)
+    _patch('/api/v1/host/%s/container/%s/' %
+           (config.get('cya', 'hostname'), name), data)
 
 
 def _check(args):
-    c = _get('/api/v1/host/%s/?with_containers' % settings.HOST_NAME)
+    c = _get(
+        '/api/v1/host/%s/?with_containers' % config.get('cya', 'hostname'))
     rem_containers = {x['name']: x for x in c.get('containers', [])}
     rem_names = set(rem_containers.keys())
     local_names = set(lxc.list_containers())
@@ -162,6 +184,7 @@ def _check(args):
         _update_container(x)
 
     for x in to_del:
+        print('Deleting container: %s' % x)
         c = lxc.Container(x)
         c.stop()
         c.destroy()
@@ -178,6 +201,7 @@ def get_args():
     sub = parser.add_subparsers(help='sub-command help')
     p = sub.add_parser('register', help='Register this host with the server')
     p.set_defaults(func=_register_host)
+    p.add_argument('server_url')
 
     p = sub.add_parser('update', help='Update host props with the server')
     p.set_defaults(func=_update_host)

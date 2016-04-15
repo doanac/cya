@@ -27,10 +27,9 @@ Setting Up The Client(s)
 
 * Go to your favorite install place like /srv
 * curl http:<cya server>:8000/client_install.sh | sudo bash
-* ./cya_client/main.py register
 
-The register step will import all local containers into the cya server so they
-can be managed from there.
+The install step will register with the server and import all local containers
+into the cya server so they can be managed from there.
 
 Example Init Script
 -------------------
