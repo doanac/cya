@@ -17,7 +17,8 @@ from multiprocessing import cpu_count
 
 import lxc
 
-config_file = os.path.join(os.path.dirname(__file__), 'settings.conf')
+script = os.path.abspath(__file__)
+config_file = os.path.join(os.path.dirname(script), 'settings.conf')
 config = ConfigParser()
 config.read([config_file])
 
@@ -39,6 +40,12 @@ def _create_conf(server_url):
         config['cya']['hostname'] = f.read().strip()
     with open(config_file, 'w') as f:
         config.write(f, True)
+
+
+def _create_cron():
+    with open('/etc/cron.d/cya_client') as f:
+        f.write('* * * * *	root %s check\n' % script)
+        f.write('* * * * *	root %s update\n' % script)
 
 
 def _http_resp(resource, headers=None, data=None, method=None):
@@ -115,6 +122,14 @@ def _register_host(args):
         containers.append(_container_props(c))
     data['containers'] = containers
     _post('/api/v1/host/', data)
+    _create_cron()
+
+
+def _uninstall(args):
+    os.unlink('/etc/cron.d/cya_client')
+    os.unlink(config_file)
+    os.unlink(script)
+    os.rmdir(os.path.dirname(script))
 
 
 def _update_host(args, with_containers=False):
@@ -208,6 +223,9 @@ def get_args():
 
     p = sub.add_parser('check', help='Check in with server for updates')
     p.set_defaults(func=_check)
+
+    p = sub.add_parser('uninstall', help='Uninstall the client')
+    p.set_defaults(func=_uninstall)
 
     args = parser.parse_args()
     return args
