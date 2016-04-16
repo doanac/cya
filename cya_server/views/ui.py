@@ -1,6 +1,4 @@
 import os
-import subprocess
-import tempfile
 
 from flask import (
     g, flash, redirect, render_template, request, session, url_for
@@ -211,14 +209,12 @@ def remove_container():
     return redirect(url_for('host', name=request.form['host']))
 
 
-@app.route('/git_bundle')
-def git_bundle():
+@app.route('/cya_client.py')
+def client_py():
     here = os.path.dirname(__file__)
-    with tempfile.NamedTemporaryFile() as f:
-        subprocess.check_call(
-            ['git', 'bundle', 'create', f.name, '--all'], cwd=here)
-        with open(f.name, 'rb') as f:
-            return f.read()
+    script = os.path.join(here, '../../cya_client.py')
+    with open(script, 'rb') as f:
+        return f.read()
 
 
 @app.route('/client_install.sh')
@@ -226,6 +222,6 @@ def install_script():
     base = url_for('index', _external=True)
     if base.endswith('/'):
         base = base[:-1]
-    bundle = url_for('git_bundle', _external=True)
+    client = url_for('client_py', _external=True)
     return render_template(
-        'client_install.sh', base_url=base, bundle_url=bundle)
+        'client_install.sh', base_url=base, client_url=client)

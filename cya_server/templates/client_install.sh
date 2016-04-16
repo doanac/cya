@@ -1,10 +1,8 @@
 #!/bin/sh -ex
 
-repo_root=$(pwd)/cya
-bundle=`mktemp`
+mkdir cya
+cd cya
+wget -O cya_client.py "{{client_url}}"
+chmod +x cya_client.py
+./cya_client.py register "{{base_url}}"
 
-curl {{bundle_url}} > $bundle
-git clone $bundle $repo_root
-rm $bundle
-
-${repo_root}/cya_client/main.py register "{{base_url}}"
