@@ -5,9 +5,14 @@ import hmac
 import os
 import time
 
-from cya_server.settings import MODELS_FILE, CONTAINER_TYPES, PINGS_DIR
+from cya_server.settings import (
+    MODELS_FILE, CONTAINER_TYPES, PINGS_DIR, CLIENT_SCRIPT)
 from cya_server.concurrently import json_data, json_get
 from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
+
+
+def client_version():
+    return str(os.stat(CLIENT_SCRIPT).st_mtime)
 
 
 class SecretField(Field):

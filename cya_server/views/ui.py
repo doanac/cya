@@ -223,5 +223,5 @@ def install_script():
     if base.endswith('/'):
         base = base[:-1]
     client = url_for('client_py', _external=True)
-    return render_template(
-        'client_install.sh', base_url=base, client_url=client)
+    return render_template('client_install.sh', base_url=base,
+                           client_url=client, version=models.client_version())

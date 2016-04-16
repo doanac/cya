@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# TODO check for container state changing (stopped/started) and report if need
+
 import argparse
 import fcntl
 import json
@@ -8,6 +10,7 @@ import os
 import platform
 import stat
 import sys
+import time
 import urllib.error
 import urllib.request
 import urllib.parse
@@ -27,11 +30,22 @@ logging.basicConfig(
 log = logging.getLogger('cya-client')
 
 
-def _create_conf(server_url):
+def _create_conf(server_url, version):
     import string
     import random
+    if os.path.exists(config_file):
+        log.info('updating config settings')
+        config['cya']['server_url'] = server_url
+        config['cya']['version'] = version
+        with open(config_file, 'w') as f:
+            config.write(f, True)
+        _create_cron()
+        _check(None)
+        sys.exit()
+
     config.add_section('cya')
     config['cya']['server_url'] = server_url
+    config['cya']['version'] = version
     config['cya']['log_level'] = 'INFO'
     chars = string.ascii_letters + string.digits + '!@#$^&*~'
     config['cya']['host_api_key'] =\
@@ -43,7 +57,7 @@ def _create_conf(server_url):
 
 
 def _create_cron():
-    with open('/etc/cron.d/cya_client') as f:
+    with open('/etc/cron.d/cya_client', 'w') as f:
         f.write('* * * * *	root %s check\n' % script)
         f.write('* 2 * * *	root %s update\n' % script)
 
@@ -117,7 +131,7 @@ def _container_props(name):
 
 
 def _register_host(args):
-    _create_conf(args.server_url)
+    _create_conf(args.server_url, args.version)
     data = _host_props()
     data['api_key'] = config.get('cya', 'host_api_key')
     containers = []
@@ -173,9 +187,29 @@ def _update_container(name):
            (config.get('cya', 'hostname'), name), data)
 
 
+def _upgrade_client(version):
+    script = _http_resp('/cya_client.py', {}).read()
+    with open(__file__, 'wb') as f:
+        f.write(script)
+    p = os.fork()
+    if p == 0:
+        log.debug('waiting 2 seconds for parent to exit')
+        time.sleep(2)
+        args = [__file__, 'register', config.get('cya', 'server_url'), version]
+        os.execv(args[0], args)
+    else:
+        log.debug('exiting client to let child run')
+        sys.exit()
+
+
 def _check(args):
     c = _get(
         '/api/v1/host/%s/?with_containers' % config.get('cya', 'hostname'))
+
+    if c['client_version'] != config.get('cya', 'version'):
+        log.warn('Upgrading client to: %s', c['client_version'])
+        _upgrade_client(c['client_version'])
+
     rem_containers = {x['name']: x for x in c.get('containers', [])}
     rem_names = set(rem_containers.keys())
     local_names = set(lxc.list_containers())
@@ -220,6 +254,7 @@ def get_args():
     p = sub.add_parser('register', help='Register this host with the server')
     p.set_defaults(func=_register_host)
     p.add_argument('server_url')
+    p.add_argument('version')
 
     p = sub.add_parser('update', help='Update host props with the server')
     p.set_defaults(func=_update_host)

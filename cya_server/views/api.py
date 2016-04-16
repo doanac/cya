@@ -87,6 +87,7 @@ def host_get(name):
         h = m.get_host(name)
         if _is_host_authenticated(h):
             h.ping()
+            h.data['client_version'] = models.client_version()
         withcontainers = request.args.get('with_containers') is not None
         if not withcontainers and 'containers' in h.data:
             del h.data['containers']
