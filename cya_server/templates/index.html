@@ -48,12 +48,13 @@ function reCreateContainer(host, container) {
   <h2>Hosts</h2>
   <table class="table table-striped">
   <tr>
-    <th>Name</th><th>Enlisted</th><th>Release</th><th>Memory</th><th>CPU's</th><th>Arch</th><th>Containers</th>
+    <th>Name</th><th>Enlisted</th><th>Online</th><th>Release</th><th>Memory</th><th>CPU's</th><th>Arch</th><th>Containers</th>
   </tr>
   {% for h in hosts %}
     <tr>
       <td><a href="{{url_for('host', name=h.name)}}">{{h.name}}</a></td>
       <td>{{h.enlisted}}</td>
+      <td>{{h.online}}</td>
       <td>{{h.distro_codename}}</td>
       <td>{{h.mem_total|filesizeformat}}</td>
       <td>{{h.cpu_total}}</td>

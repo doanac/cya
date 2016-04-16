@@ -6,6 +6,15 @@ from cya_server import app, models, settings
 from cya_server.dict_model import ModelError
 
 
+def _is_host_authenticated(host):
+    key = request.headers.get('Authorization', None)
+    if key:
+        parts = key.split(' ')
+        if len(parts) == 2 and parts[0] == 'Token':
+            return host.api_key_field.verify(parts[1], host.api_key)
+    return False
+
+
 def host_authenticated(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -76,6 +85,8 @@ def host_delete(name):
 def host_get(name):
     with models.load() as m:
         h = m.get_host(name)
+        if _is_host_authenticated(h):
+            h.ping()
         withcontainers = request.args.get('with_containers') is not None
         if not withcontainers and 'containers' in h.data:
             del h.data['containers']

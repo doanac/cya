@@ -33,7 +33,7 @@ def _create_conf(server_url):
     config.add_section('cya')
     config['cya']['server_url'] = server_url
     config['cya']['log_level'] = 'INFO'
-    chars = string.ascii_letters + string.digits + '!@#$%^&*~'
+    chars = string.ascii_letters + string.digits + '!@#$^&*~'
     config['cya']['host_api_key'] =\
         ''.join(random.choice(chars) for _ in range(32))
     with open('/etc/hostname') as f:
@@ -65,8 +65,15 @@ def _http_resp(resource, headers=None, data=None, method=None):
         sys.exit(1)
 
 
+def _auth_headers():
+    return {
+        'content-type': 'application/json',
+        'Authorization': 'Token ' + config.get('cya', 'host_api_key')
+    }
+
+
 def _get(resource):
-    return json.loads(_http_resp(resource, headers={}).read().decode())
+    return json.loads(_http_resp(resource, _auth_headers()).read().decode())
 
 
 def _post(resource, data):
@@ -77,11 +84,7 @@ def _post(resource, data):
 
 def _patch(resource, data):
     data = json.dumps(data).encode('utf8')
-    headers = {
-        'content-type': 'application/json',
-        'Authorization': 'Token ' + config.get('cya', 'host_api_key')
-    }
-    return _http_resp(resource, headers, data, method='PATCH')
+    return _http_resp(resource, _auth_headers(), data, method='PATCH')
 
 
 def _host_props():

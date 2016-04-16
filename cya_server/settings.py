@@ -26,6 +26,7 @@ INIT_SCRIPTS = [
 
 
 MODELS_FILE = os.path.join(_here, '../models.json')
+PINGS_DIR = os.path.join(_here, '../pings')
 SECRET_KEY = None
 AUTO_APPROVE_USER = True
 OPENID_STORE = os.path.join(_here, '../.openid')

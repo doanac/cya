@@ -5,7 +5,7 @@ import hmac
 import os
 import time
 
-from cya_server.settings import MODELS_FILE, CONTAINER_TYPES
+from cya_server.settings import MODELS_FILE, CONTAINER_TYPES, PINGS_DIR
 from cya_server.concurrently import json_data, json_get
 from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
 
@@ -89,6 +89,22 @@ class Host(Model):
                 return c
         raise ModelError('Container not found: %s' % name, 404)
 
+    def _get_ping_file(self):
+        if not os.path.exists(PINGS_DIR):
+            os.mkdir(PINGS_DIR)
+        return os.path.join(PINGS_DIR, self.name + '.log')
+
+    def ping(self):
+        with open(self._get_ping_file(), mode='a') as f:
+            f.write('%d\n' % time.time())
+
+    @property
+    def online(self):
+        """Online means we've been "pinged" in the last 3 minutes."""
+        now = time.time()
+        mtime = os.path.getmtime(self._get_ping_file())
+        return now - mtime < 180  # pinged in last 3 minutes
+
 
 class InitScript(Model):
     FIELDS = [
@@ -132,7 +148,7 @@ class ServerModel(Model):
         '''
         best_host = None
         best_count = 0
-        for h in self.hosts:
+        for h in [x for x in self.hosts if x.online]:
             count = len(h.containers)
             if not best_host or count < best_count:
                 best_host = h
