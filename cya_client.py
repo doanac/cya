@@ -21,6 +21,7 @@ from multiprocessing import cpu_count
 import lxc
 
 script = os.path.abspath(__file__)
+hostprops_cached = os.path.join(os.path.dirname(script), 'hostprops.cache')
 config_file = os.path.join(os.path.dirname(script), 'settings.conf')
 config = ConfigParser()
 config.read([config_file])
@@ -106,7 +107,6 @@ def _host_props():
     distro, release, name = platform.dist()
     return {
         'name': config.get('cya', 'hostname'),
-        'api_key': config.get('cya', 'host_api_key'),
         'cpu_total': cpu_count(),
         'cpu_type': platform.processor(),
         'mem_total': mem,
@@ -149,14 +149,19 @@ def _uninstall(args):
     os.rmdir(os.path.dirname(script))
 
 
-def _update_host(args, with_containers=False):
+def _update_host(args):
     data = _host_props()
-    if with_containers:
-        containers = []
-        for c in lxc.list_containers():
-            containers.append(_container_props(c))
-        data['containers'] = containers
-    _patch('/api/v1/host/%s/' % config.get('cya', 'hostname'), data)
+    try:
+        with open(hostprops_cached) as f:
+            cached = json.load(f)
+    except:
+        cached = {}
+
+    if cached != data:
+        log.info('updating host properies on server')
+        _patch('/api/v1/host/%s/' % config.get('cya', 'hostname'), data)
+        with open(hostprops_cached, 'w') as f:
+            json.dump(data, f)
 
 
 def _create_container(container_props):
@@ -209,6 +214,8 @@ def _check(args):
     if c['client_version'] != config.get('cya', 'version'):
         log.warn('Upgrading client to: %s', c['client_version'])
         _upgrade_client(c['client_version'])
+
+    _update_host(args)
 
     rem_containers = {x['name']: x for x in c.get('containers', [])}
     rem_names = set(rem_containers.keys())
