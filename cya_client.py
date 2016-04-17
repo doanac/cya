@@ -234,9 +234,18 @@ def _check(args):
             _create_container(rem_containers[x])
             log.debug('updating container info on server')
             _update_container(x)
-        if rem_containers[x].get('state') != c.state:
-            log.debug('updating container state to: %s', c.state)
-            _update_container(x)
+        else:
+            changed = False
+            should_run = rem_containers[x].get('keep_running', True)
+            if should_run and c.state != 'RUNNING':
+                c.start()
+                changed = True
+            elif not should_run and c.state != 'STOPPED':
+                c.stop()
+                changed = True
+            if changed or rem_containers[x].get('state') != c.state:
+                log.debug('updating container state to: %s', c.state)
+                _update_container(x)
 
     for x in to_add:
         print('Creating: container: %s' % x)

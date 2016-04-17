@@ -193,6 +193,27 @@ def recreate_container():
     return redirect(url_for('host', name=request.form['host']))
 
 
+@app.route('/start_container/', methods=['POST'])
+def start_container():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+    if not g.user.admin:
+        flash('you must be an admin to update container state')
+        return redirect(url_for('login'))
+
+    with models.load(read_only=False) as m:
+        host = m.get_host(request.form['host'])
+        container = host.get_container(request.form['name'])
+        keep_running = request.form['keep_running'].lower() in (1, 'true')
+        if keep_running:
+            state = 'STARTING'
+        else:
+            state = 'STOPPING'
+        container.update({'keep_running': keep_running, 'state': state})
+        flash('Container requeste queued')
+    return redirect(url_for('host', name=request.form['host']))
+
+
 @app.route('/remove_container/', methods=['POST'])
 def remove_container():
     if g.user is None or 'openid' not in session:

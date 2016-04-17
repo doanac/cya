@@ -38,6 +38,30 @@ function reCreateContainer(host, container) {
   document.body.appendChild(form);
   form.submit();
 }
+function containerState(host, container, keep_running) {
+  var form = document.createElement("form");
+  form.setAttribute("method", "post");
+  form.setAttribute("action", "{{url_for('start_container')}}");
+  var hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "host");
+  hiddenField.setAttribute("value", host);
+  form.appendChild(hiddenField);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "name");
+  hiddenField.setAttribute("value", container);
+  form.appendChild(hiddenField);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "keep_running");
+  hiddenField.setAttribute("value", keep_running);
+  form.appendChild(hiddenField);
+  document.body.appendChild(form);
+  form.submit();
+}
 </script>
 
   {% if session.openid %}
@@ -66,7 +90,7 @@ function reCreateContainer(host, container) {
 
   <h2>Containers</h2>
   <table class="table table-striped">
-    <tr><th>Host</th><th>Name</th><th>Template</th><th>Release</th><th>State</th><th>Remove/Re-Create</th></tr>
+    <tr><th>Host</th><th>Name</th><th>Template</th><th>Release</th><th>State</th><th>Actions</th></tr>
     {% for h in hosts %}
     {% for c in h.containers %}
     <tr>
@@ -82,6 +106,16 @@ function reCreateContainer(host, container) {
         <button onclick="reCreateContainer('{{h.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
           <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
         </button>
+	{% if c.state in ('QUEUED', 'RUNNING')%}
+          <button onclick="containerState('{{h.name}}', '{{c.name}}', false)" type="button" class="btn btn-sm" aria-label="stop">
+            <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
+          </button>
+	{% endif %}
+	{% if c.state == 'STOPPED'%}
+          <button onclick="containerState('{{h.name}}', '{{c.name}}', true)" type="button" class="btn btn-sm" aria-label="start">
+            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+          </button>
+	{% endif %}
     </tr>
     {% endfor %}
     {% endfor %}
