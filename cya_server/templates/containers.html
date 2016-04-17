@@ -12,22 +12,40 @@
     <td>{{c.release}}</td>
     <td>{{c.state}}</td>
     <td>
-      <button onclick="removeContainer('{{h.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-      </button>
-      <button onclick="reCreateContainer('{{h.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-        <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-      </button>
+      <div class="dropdown">
+        <button class="btn btn-info dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">Actions <span class="caret"></span></button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="menu1">
+            <li role="presentation">
+              <a role="menuitem" tabindex="-1" href="#" onclick="removeContainer('{{h.name}}', '{{c.name}}')">
+               <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+               destroy
+              </a>
+            </li>
+            <li role="presentation">
+              <a role="menuitem" tabindex="-1" href="#" onclick="reCreateContainer('{{h.name}}', '{{c.name}}')">
+               <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
+               re-create
+              </a>
+            </li>
 {% if c.state in ('QUEUED', 'RUNNING')%}
-          <button onclick="containerState('{{h.name}}', '{{c.name}}', false)" type="button" class="btn btn-sm" aria-label="stop">
-            <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
-          </button>
+            <li role="presentation">
+              <a role="menuitem" tabindex="-1" href="#" onclick="containerState('{{h.name}}', '{{c.name}}', false)">
+               <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
+               stop
+              </a>
+            </li>
 {% endif %}
 {% if c.state == 'STOPPED'%}
-          <button onclick="containerState('{{h.name}}', '{{c.name}}', true)" type="button" class="btn btn-sm" aria-label="start">
-            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
-          </button>
+            <li role="presentation">
+              <a role="menuitem" tabindex="-1" href="#" onclick="containerState('{{h.name}}', '{{c.name}}', true)">
+               <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+               start
+              </a>
+            </li>
 {% endif %}
+          </ul>
+      </div>
+    </td>
   </tr>
   {% endfor %}
   {% endfor %}
