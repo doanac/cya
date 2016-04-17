@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block body %}
+  <h2>Container: {{container.name}}</h2>
+  <table class="table table-condensed">
+    <tr><th>Host</th><td>{{host.name}}</td></tr>
+    <tr><th>Template</th><td>{{container.template}}</td></tr>
+    <tr><th>Release</th><td>{{container.release}}</td></tr>
+    <tr><th>State</th><td>{{container.state}}</td></tr>
+    <tr><th>Requested</th><td>{{container.requested}}</td></tr>
+    <tr><th>Created</th><td>{{container.created}}</td></tr>
+    <tr><th>Max Memory</th><td>{{container.max_memory|filesizeformat}}</td></tr>
+  </table>
+
+  <h3>Init Script</h3>
+{% if not session.openid %}
+You must be logged in to see the init script
+{% else %}
+  <pre>
+{{container.init_script}}
+  </pre>
+{% endif %}
+{% endblock %}

@@ -156,6 +156,14 @@ def host(name):
     return render_template('host.html', host=h)
 
 
+@app.route('/host/<string:host>/<string:container>')
+def host_container(host, container):
+    with models.load(read_only=True) as m:
+        h = m.get_host(host)
+        c = h.get_container(container)
+    return render_template('container.html', host=h, container=c)
+
+
 @app.route('/create_container/', methods=['POST', 'GET'])
 def create_container():
     if g.user is None or 'openid' not in session:
