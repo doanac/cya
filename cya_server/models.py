@@ -37,6 +37,7 @@ class Container(Model):
         Field('date_created', int, required=False),
         Field('max_memory', int, required=False),
         Field('re_create', data_type=bool, def_value=False, required=False),
+        Field('state', data_type=str, def_value='UNKNOWN', required=False),
     ]
 
     @property
@@ -170,6 +171,7 @@ class ServerModel(Model):
             'init_script': init_script,
             'max_memory': max_mem,
             'date_requested': int(time.time()),
+            'state': 'QUEUED',
         }
         # TODO this is tied to find_best_host being dumb, these should get
         # queued and not be tied to a host instantly, or moving a container

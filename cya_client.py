@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO check for container state changing (stopped/started) and report if need
-
 import argparse
 import fcntl
 import json
@@ -127,6 +125,7 @@ def _container_props(name):
         'name': name,
         'max_memory': max_mem,
         'date_created': int(os.stat(c.config_file_name).st_ctime),
+        'state': c.state,
     }
 
 
@@ -225,15 +224,18 @@ def _check(args):
     to_del = local_names - rem_names
 
     for x in rem_names & local_names:
+        c = lxc.Container(x)
         if rem_containers[x].get('re_create'):
             print('Re-creating container: %s' % x)
-            c = lxc.Container(x)
             log.debug('stopping')
             c.stop()
             log.debug('destroying')
             c.destroy()
             _create_container(rem_containers[x])
             log.debug('updating container info on server')
+            _update_container(x)
+        if rem_containers[x].get('state') != c.state:
+            log.debug('updating container state to: %s', c.state)
             _update_container(x)
 
     for x in to_add:
