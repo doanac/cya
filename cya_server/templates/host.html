@@ -2,42 +2,7 @@
 
 {% block body %}
 <script type="text/javascript">
-function removeContainer(container) {
-  var form = document.createElement("form");
-  form.setAttribute("method", "post");
-  form.setAttribute("action", "{{url_for('remove_container')}}");
-  var hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "host");
-  hiddenField.setAttribute("value", "{{host.name}}");
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "name");
-  hiddenField.setAttribute("value", container);
-  form.appendChild(hiddenField);
-  document.body.appendChild(form);
-  form.submit();
-}
-function reCreateContainer(container) {
-  var form = document.createElement("form");
-  form.setAttribute("method", "post");
-  form.setAttribute("action", "{{url_for('recreate_container')}}");
-  var hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "host");
-  hiddenField.setAttribute("value", "{{host.name}}");
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "name");
-  hiddenField.setAttribute("value", container);
-  form.appendChild(hiddenField);
-  document.body.appendChild(form);
-  form.submit();
-}
+{% include 'common.js' %}
 </script>
   <h2>CYA Host: {{host.name}}</h2>
   <table class="table table-condensed">
@@ -68,10 +33,10 @@ function reCreateContainer(container) {
 	{% endif %}
       </td>
       <td>
-        <button onclick="removeContainer('{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
+        <button onclick="removeContainer('{{host.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
           <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
         </button>
-        <button onclick="reCreateContainer('{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
+        <button onclick="reCreateContainer('{{host.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
           <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
         </button>
       </td>
