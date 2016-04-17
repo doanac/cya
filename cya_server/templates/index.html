@@ -30,35 +30,5 @@
   </table>
 
   <h2>Containers</h2>
-  <table class="table table-striped">
-    <tr><th>Host</th><th>Name</th><th>Template</th><th>Release</th><th>State</th><th>Actions</th></tr>
-    {% for h in hosts %}
-    {% for c in h.containers %}
-    <tr>
-      <td><a href="{{url_for('host', name=h.name)}}">{{h.name}}</a></td>
-      <td>{{c.name}}</td>
-      <td>{{c.template}}</td>
-      <td>{{c.release}}</td>
-      <td>{{c.state}}</td>
-      <td>
-        <button onclick="removeContainer('{{h.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-          <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-        </button>
-        <button onclick="reCreateContainer('{{h.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-          <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-        </button>
-	{% if c.state in ('QUEUED', 'RUNNING')%}
-          <button onclick="containerState('{{h.name}}', '{{c.name}}', false)" type="button" class="btn btn-sm" aria-label="stop">
-            <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
-          </button>
-	{% endif %}
-	{% if c.state == 'STOPPED'%}
-          <button onclick="containerState('{{h.name}}', '{{c.name}}', true)" type="button" class="btn btn-sm" aria-label="start">
-            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
-          </button>
-	{% endif %}
-    </tr>
-    {% endfor %}
-    {% endfor %}
-  </table>
+  {% include 'containers.html' %}
 {% endblock %}

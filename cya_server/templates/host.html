@@ -14,38 +14,7 @@
   </table>
 
   <h3>Containers</h3>
-  <table class="table table-striped">
-    <tr><th>Name</th><th>Template</th><th>Release</th><th>State</th><th>Requested</th>
-        <th>Created</th><th>Max Mem</th><th>Init Script</th><th>Remove/Re-Create</th></tr>
-    {% for c in host.containers %}
-    <tr>
-      <td>{{c.name}}</td>
-      <td>{{c.template}}</td>
-      <td>{{c.release}}</td>
-      <td>{{c.state}}</td>
-      <td>{{c.requested_str}}</td>
-      <td>{{c.created_str}}</td>
-      <td>{{c.max_memory|filesizeformat}}</td>
-      <td>
-        {% if c.init_script %}
-	<a href="#" data-toggle="popover" title="Init Script" data-placement="left" data-content="{{c.init_script}}">
-          <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span></a>
-	{% endif %}
-      </td>
-      <td>
-        <button onclick="removeContainer('{{host.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-          <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-        </button>
-        <button onclick="reCreateContainer('{{host.name}}', '{{c.name}}')" type="button" class="btn btn-sm" aria-label="remove">
-          <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span>
-        </button>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  <script>
-    $(document).ready(function(){
-      $('[data-toggle="popover"]').popover();
-    });
-  </script>
+  {% set hosts = [host] %}
+  {% set hide_hosts = True %}
+  {% include 'containers.html' %}
 {% endblock %}
