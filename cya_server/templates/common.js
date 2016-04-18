@@ -1,81 +1,27 @@
-function removeContainer(host, container) {
+function do_submit(url, keyvals) {
   var form = document.createElement("form");
   form.setAttribute("method", "post");
-  form.setAttribute("action", "{{url_for('remove_container')}}");
-  var hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "host");
-  hiddenField.setAttribute("value", host);
-  form.appendChild(hiddenField);
+  form.setAttribute("action", url);
 
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "name");
-  hiddenField.setAttribute("value", container);
-  form.appendChild(hiddenField);
+  for(var key in keyvals){
+    var hiddenField = document.createElement("input");
+    hiddenField.setAttribute("type", "hidden");
+    hiddenField.setAttribute("name", key);
+    hiddenField.setAttribute("value", keyvals[key]);
+    form.appendChild(hiddenField);
+  }
   document.body.appendChild(form);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "url");
-  hiddenField.setAttribute("value", location.href);
-  form.appendChild(hiddenField);
-
   form.submit();
+}
+function removecontainer(host, container) {
+  var props = {host: host, name: container, url: location.href};
+  do_submit("{{url_for('remove_container')}}", props);
 }
 function reCreateContainer(host, container) {
-  var form = document.createElement("form");
-  form.setAttribute("method", "post");
-  form.setAttribute("action", "{{url_for('recreate_container')}}");
-  var hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "host");
-  hiddenField.setAttribute("value", host);
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "name");
-  hiddenField.setAttribute("value", container);
-  form.appendChild(hiddenField);
-  document.body.appendChild(form);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "url");
-  hiddenField.setAttribute("value", location.href);
-  form.appendChild(hiddenField);
-
-  form.submit();
+  var props = {host: host, name: container, url: location.href};
+  do_submit("{{url_for('recreate_container')}}", props);
 }
 function containerState(host, container, keep_running) {
-  var form = document.createElement("form");
-  form.setAttribute("method", "post");
-  form.setAttribute("action", "{{url_for('start_container')}}");
-  var hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "host");
-  hiddenField.setAttribute("value", host);
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "name");
-  hiddenField.setAttribute("value", container);
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "keep_running");
-  hiddenField.setAttribute("value", keep_running);
-  form.appendChild(hiddenField);
-
-  hiddenField = document.createElement("input");
-  hiddenField.setAttribute("type", "hidden");
-  hiddenField.setAttribute("name", "url");
-  hiddenField.setAttribute("value", location.href);
-  form.appendChild(hiddenField);
-
-  document.body.appendChild(form);
-  form.submit();
+  var props = {host: host, name: container, url: location.href, keep_running: keep_running};
+  do_submit("{{url_for('start_container')}}", props);
 }
