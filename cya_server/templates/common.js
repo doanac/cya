@@ -14,6 +14,13 @@ function removeContainer(host, container) {
   hiddenField.setAttribute("value", container);
   form.appendChild(hiddenField);
   document.body.appendChild(form);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "url");
+  hiddenField.setAttribute("value", location.href);
+  form.appendChild(hiddenField);
+
   form.submit();
 }
 function reCreateContainer(host, container) {
@@ -32,6 +39,13 @@ function reCreateContainer(host, container) {
   hiddenField.setAttribute("value", container);
   form.appendChild(hiddenField);
   document.body.appendChild(form);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "url");
+  hiddenField.setAttribute("value", location.href);
+  form.appendChild(hiddenField);
+
   form.submit();
 }
 function containerState(host, container, keep_running) {
@@ -55,6 +69,13 @@ function containerState(host, container, keep_running) {
   hiddenField.setAttribute("name", "keep_running");
   hiddenField.setAttribute("value", keep_running);
   form.appendChild(hiddenField);
+
+  hiddenField = document.createElement("input");
+  hiddenField.setAttribute("type", "hidden");
+  hiddenField.setAttribute("name", "url");
+  hiddenField.setAttribute("value", location.href);
+  form.appendChild(hiddenField);
+
   document.body.appendChild(form);
   form.submit();
 }

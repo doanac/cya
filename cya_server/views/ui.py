@@ -198,7 +198,7 @@ def recreate_container():
         container = host.get_container(request.form['name'])
         container.update({'re_create': True})
         flash('Container re-created: %s' % request.form['name'])
-    return redirect(url_for('host', name=request.form['host']))
+    return redirect(request.form['url'])
 
 
 @app.route('/start_container/', methods=['POST'])
@@ -219,7 +219,7 @@ def start_container():
             state = 'STOPPING'
         container.update({'keep_running': keep_running, 'state': state})
         flash('Container requeste queued')
-    return redirect(url_for('host', name=request.form['host']))
+    return redirect(request.form['url'])
 
 
 @app.route('/remove_container/', methods=['POST'])
@@ -235,7 +235,7 @@ def remove_container():
         container = host.get_container(request.form['name'])
         container.delete()
         flash('Deleted container: %s' % request.form['name'])
-    return redirect(url_for('host', name=request.form['host']))
+    return redirect(request.form['url'])
 
 
 @app.route('/cya_client.py')
