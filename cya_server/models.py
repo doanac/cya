@@ -108,6 +108,9 @@ class Host(Model):
     @property
     def online(self):
         """Online means we've been "pinged" in the last 3 minutes."""
+        ping_file = self._get_ping_file()
+        if not os.path.exists(ping_file):
+            return False
         now = time.time()
         mtime = os.path.getmtime(self._get_ping_file())
         return now - mtime < 180  # pinged in last 3 minutes

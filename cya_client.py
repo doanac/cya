@@ -58,7 +58,6 @@ def _create_conf(server_url, version):
 def _create_cron():
     with open('/etc/cron.d/cya_client', 'w') as f:
         f.write('* * * * *	root %s check\n' % script)
-        f.write('* 2 * * *	root %s update\n' % script)
 
 
 def _http_resp(resource, headers=None, data=None, method=None):
