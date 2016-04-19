@@ -10,6 +10,10 @@ Then you can request containers as you need them and the server will try and
 pick the best client for creating the container on. The clients check with the
 server once a minute to find out if there are new containers it should create.
 
+See what I'm running here:
+
+ https://cya.bettykrocks.com/
+
 Setting Up The Server
 ---------------------
 
