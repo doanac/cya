@@ -13,7 +13,7 @@ function do_submit(url, keyvals) {
   document.body.appendChild(form);
   form.submit();
 }
-function removecontainer(host, container) {
+function removeContainer(host, container) {
   var props = {host: host, name: container, url: location.href};
   do_submit("{{url_for('remove_container')}}", props);
 }
