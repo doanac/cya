@@ -6,7 +6,7 @@ import os
 import time
 
 from cya_server.settings import (
-    MODELS_FILE, CONTAINER_TYPES, PINGS_DIR, CLIENT_SCRIPT)
+    MODELS_FILE, CONTAINER_TYPES, PINGS_DIR, CLIENT_SCRIPT, CONTAINER_LOGS_DIR)
 from cya_server.concurrently import json_data, json_get
 from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
 
@@ -60,6 +60,15 @@ class Container(Model):
                 data.get('date_created', 0) > self.date_created:
             data['re_create'] = False
         return super(Container, self).update(data)
+
+    def _get_console_file(self):
+        if not os.path.exists(CONTAINER_LOGS_DIR):
+            os.mkdir(CONTAINER_LOGS_DIR)
+        return os.path.join(CONTAINER_LOGS_DIR, self.name + '.log')
+
+    def append_console_log(self, content):
+        with open(self._get_console_file(), 'a') as f:
+            f.write(content)
 
     def __repr__(self):
         return self.data['name']

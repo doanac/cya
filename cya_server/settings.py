@@ -27,6 +27,7 @@ INIT_SCRIPTS = [
 
 MODELS_FILE = os.path.join(_here, '../models.json')
 PINGS_DIR = os.path.join(_here, '../pings')
+CONTAINER_LOGS_DIR = os.path.join(_here, '../container_logs')
 CLIENT_SCRIPT = os.path.join(_here, '../cya_client.py')
 SECRET_KEY = None
 AUTO_APPROVE_USER = True

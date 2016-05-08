@@ -119,3 +119,12 @@ def host_container_update(name, c):
         h = m.get_host(name)
         h.get_container(c).update(request.json)
     return jsonify({})
+
+
+@app.route('/api/v1/host/<string:name>/container/<string:c>/logs',
+           methods=['POST'])
+@host_authenticated
+def host_container_logs_update(name, c):
+    with models.load(read_only=True) as m:
+        h = m.get_host(name)
+        h.get_container(c).append_console_log(request.data)
