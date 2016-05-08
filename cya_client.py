@@ -167,10 +167,14 @@ def _create_container(container_props):
     ct = lxc.Container(container_props['name'])
     ct.create(container_props['template'],
               args={'release': container_props['release']})
+
+    console = os.path.join(os.path.dirname(ct.config_file_name), 'console.log')
+    ct.set_config_item('lxc.console.logfile', console)
     mem = container_props.get('max_memory')
     if mem:
         ct.set_config_item('lxc.cgroup.memory.limit_in_bytes', str(mem))
-        ct.save_config()
+    ct.save_config()
+
     init = container_props.get('init_script')
     if init:
         path = os.path.join(ct.get_config_item('lxc.rootfs'), 'cya_init')
