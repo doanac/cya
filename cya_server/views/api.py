@@ -127,4 +127,7 @@ def host_container_update(name, c):
 def host_container_logs_update(name, c):
     with models.load(read_only=True) as m:
         h = m.get_host(name)
-        h.get_container(c).append_console_log(request.data)
+        h.get_container(c).append_console_log(request.data.decode())
+    resp = jsonify({})
+    resp.status_code = 201
+    return resp

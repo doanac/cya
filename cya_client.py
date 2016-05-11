@@ -101,10 +101,11 @@ def _patch(resource, data):
 
 
 def _post_logs(container, data):
-    headers = {'content-type': 'text/plain'}
-    resource = '/api/v1/host/%s/container/%s/' % (
+    headers = _auth_headers()
+    headers['content-type'] = 'text/plain'
+    resource = '/api/v1/host/%s/container/%s/logs' % (
         config.get('cya', 'hostname'), container)
-    return _http_resp(resource, headers, data, method='POST')
+    return _http_resp(resource, headers, data.encode(), method='POST')
 
 
 def _host_props():
@@ -226,11 +227,11 @@ def _update_logs(containers):
 
     for x in containers:
         ct = lxc.Container(x)
-        log = os.path.join(os.path.dirname(ct.config_file_name), 'console.log')
+        clog = os.path.join(os.path.dirname(ct.config_file_name), 'console.log')
         cur_pos = logs.get(x, 0)
         try:
-            with open(log) as f:
-                if os.fstat(f).st_size > cur_pos:
+            with open(clog) as f:
+                if os.fstat(f.fileno()).st_size > cur_pos:
                     log.debug('appending console log for %s', x)
                     f.seek(cur_pos)
                     _post_logs(x, f.read())
