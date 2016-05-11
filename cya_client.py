@@ -20,6 +20,7 @@ import lxc
 
 script = os.path.abspath(__file__)
 hostprops_cached = os.path.join(os.path.dirname(script), 'hostprops.cache')
+logs_info = os.path.join(os.path.dirname(script), 'logs.info')
 config_file = os.path.join(os.path.dirname(script), 'settings.conf')
 config = ConfigParser()
 config.read([config_file])
@@ -97,6 +98,13 @@ def _post(resource, data):
 def _patch(resource, data):
     data = json.dumps(data).encode('utf8')
     return _http_resp(resource, _auth_headers(), data, method='PATCH')
+
+
+def _post_logs(container, data):
+    headers = {'content-type': 'text/plain'}
+    resource = '/api/v1/host/%s/container/%s/' % (
+        config.get('cya', 'hostname'), container)
+    return _http_resp(resource, headers, data, method='POST')
 
 
 def _host_props():
@@ -209,6 +217,47 @@ def _upgrade_client(version):
         sys.exit()
 
 
+def _update_logs(containers):
+    try:
+        with open(logs_info) as f:
+            logs = json.load(f)
+    except:
+        logs = {}
+
+    for x in containers:
+        ct = lxc.Container(x)
+        log = os.path.join(os.path.dirname(ct.config_file_name), 'console.log')
+        cur_pos = logs.get(x, 0)
+        try:
+            with open(log) as f:
+                if os.fstat(f).st_size > cur_pos:
+                    log.debug('appending console log for %s', x)
+                    f.seek(cur_pos)
+                    _post_logs(x, f.read())
+                    logs[x] = f.tell()
+        except OSError:
+            pass  # log doesn't exist
+
+    with open(logs_info, 'w') as f:
+        json.dump(logs, f)
+
+
+def _handle_adds(containers, to_add):
+    for x in to_add:
+        print('Creating: container: %s' % x)
+        _create_container(containers[x])
+        log.debug('updating container info on server')
+        _update_container(x)
+
+
+def _handle_dels(containers, to_del):
+    for x in to_del:
+        print('Deleting container: %s' % x)
+        c = lxc.Container(x)
+        c.stop()
+        c.destroy()
+
+
 def _check(args):
     c = _get(
         '/api/v1/host/%s/?with_containers' % config.get('cya', 'hostname'))
@@ -250,17 +299,9 @@ def _check(args):
                 log.debug('updating container state to: %s', c.state)
                 _update_container(x)
 
-    for x in to_add:
-        print('Creating: container: %s' % x)
-        _create_container(rem_containers[x])
-        log.debug('updating container info on server')
-        _update_container(x)
-
-    for x in to_del:
-        print('Deleting container: %s' % x)
-        c = lxc.Container(x)
-        c.stop()
-        c.destroy()
+    _handle_adds(rem_containers, to_add)
+    _handle_dels(rem_containers, to_del)
+    _update_logs(rem_containers)
 
 
 def main(args):
