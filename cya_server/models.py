@@ -70,6 +70,13 @@ class Container(Model):
         with open(self._get_console_file(), 'a') as f:
             f.write(content)
 
+    def has_console_log(self):
+        return os.path.exists(self._get_console_file())
+
+    def get_console_log(self):
+        with open(self._get_console_file()) as f:
+            return f.read()
+
     def __repr__(self):
         return self.data['name']
 

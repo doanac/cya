@@ -1,7 +1,7 @@
 import os
 
 from flask import (
-    g, flash, redirect, render_template, request, session, url_for
+    g, flash, redirect, render_template, request, Response, session, url_for
 )
 from flask.ext.openid import OpenID
 
@@ -162,6 +162,19 @@ def host_container(host, container):
         h = m.get_host(host)
         c = h.get_container(container)
     return render_template('container.html', host=h, container=c)
+
+
+@app.route('/host/<string:host>/<string:container>/log')
+def host_container_log(host, container):
+    if g.user is None or 'openid' not in session:
+        flash('You must be logged in to view container logs')
+        return redirect(url_for('login'))
+    try:
+        with models.load(read_only=True) as m:
+            log = m.get_host(host).get_container(container).get_console_log()
+            return Response(log, 200, mimetype='text/plain')
+    except FileNotFoundError:
+        return ('This container has no console logs', 404)
 
 
 @app.route('/create_container/', methods=['POST', 'GET'])
