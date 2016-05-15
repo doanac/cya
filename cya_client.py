@@ -227,7 +227,11 @@ def _update_logs(containers):
 
     for x in containers:
         ct = lxc.Container(x)
-        clog = os.path.join(os.path.dirname(ct.config_file_name), 'console.log')
+        try:
+            clog = ct.get_config_item('lxc.console.logfile')
+        except KeyError:
+            # no log file defined
+            next
         cur_pos = logs.get(x, 0)
         try:
             with open(clog) as f:
