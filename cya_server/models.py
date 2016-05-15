@@ -39,6 +39,7 @@ class Container(Model):
         Field('re_create', data_type=bool, def_value=False, required=False),
         Field('state', data_type=str, def_value='UNKNOWN', required=False),
         Field('keep_running', data_type=bool, def_value=True, required=False),
+        Field('ips', data_type=str, required=False),
     ]
 
     @property

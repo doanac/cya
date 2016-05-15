@@ -20,7 +20,7 @@ import lxc
 
 script = os.path.abspath(__file__)
 hostprops_cached = os.path.join(os.path.dirname(script), 'hostprops.cache')
-logs_info = os.path.join(os.path.dirname(script), 'logs.info')
+container_cached = os.path.join(os.path.dirname(script), 'containers.cache')
 config_file = os.path.join(os.path.dirname(script), 'settings.conf')
 config = ConfigParser()
 config.read([config_file])
@@ -197,8 +197,10 @@ def _create_container(container_props):
         log.error('unable to start container')
 
 
-def _update_container(name):
+def _update_container(name, **kwargs):
     data = _container_props(name)
+    if kwargs:
+        data.update(kwargs)
     _patch('/api/v1/host/%s/container/%s/' %
            (config.get('cya', 'hostname'), name), data)
 
@@ -218,33 +220,46 @@ def _upgrade_client(version):
         sys.exit()
 
 
-def _update_logs(containers):
+def _update_logs(ct, cache):
     try:
-        with open(logs_info) as f:
-            logs = json.load(f)
+        clog = ct.get_config_item('lxc.console.logfile')
+    except KeyError:
+        # no log file defined
+        return
+    cur_pos = cache.setdefault(ct.name, {}).get('logpos', 0)
+    try:
+        with open(clog) as f:
+            if os.fstat(f.fileno()).st_size > cur_pos:
+                log.debug('appending console log for %s', ct.name)
+                f.seek(cur_pos)
+                _post_logs(ct.name, f.read())
+                cache[ct.name]['logpos'] = f.tell()
+    except OSError:
+        pass  # log doesn't exist
+
+
+def _handle_existing(containers):
+    try:
+        with open(container_cached) as f:
+            cache = json.load(f)
     except:
-        logs = {}
+        cache = {}
 
     for x in containers:
         ct = lxc.Container(x)
-        try:
-            clog = ct.get_config_item('lxc.console.logfile')
-        except KeyError:
-            # no log file defined
-            next
-        cur_pos = logs.get(x, 0)
-        try:
-            with open(clog) as f:
-                if os.fstat(f.fileno()).st_size > cur_pos:
-                    log.debug('appending console log for %s', x)
-                    f.seek(cur_pos)
-                    _post_logs(x, f.read())
-                    logs[x] = f.tell()
-        except OSError:
-            pass  # log doesn't exist
+        _update_logs(ct, cache)
+        cached_ips = cache.get(x, {}).get('ips')
+        if ct.state == 'RUNNING':
+            ips = ','.join(ct.get_ips())
+            if ips != cached_ips:
+                _update_container(x, ips=ips)
+                cache[x]['ips'] = ips
+        if ct.state != 'RUNNING' and cached_ips:
+            _update_container(x, ips='')
+            cache[x]['ips'] = ''
 
-    with open(logs_info, 'w') as f:
-        json.dump(logs, f)
+    with open(container_cached, 'w') as f:
+        json.dump(cache, f)
 
 
 def _handle_adds(containers, to_add):
@@ -306,7 +321,7 @@ def _check(args):
 
     _handle_adds(rem_containers, to_add)
     _handle_dels(rem_containers, to_del)
-    _update_logs(rem_containers)
+    _handle_existing(rem_containers)
 
 
 def main(args):

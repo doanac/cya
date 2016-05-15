@@ -10,6 +10,7 @@
     <tr><th>Requested</th><td>{{container.requested}}</td></tr>
     <tr><th>Created</th><td>{{container.created}}</td></tr>
     <tr><th>Max Memory</th><td>{{container.max_memory|filesizeformat}}</td></tr>
+    <tr><th>IPs</th><td>{{container.ips}}</td></tr>
     <tr><th>Logs</th>
         <td>{%if container.has_console_log() %}<a href="{{url_for('host_container_log', host=host.name, container=container.name)}}">console</a>{%else%}none available{%endif%}</td></tr>
   </table>
