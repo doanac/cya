@@ -28,7 +28,7 @@ class Field(object):
             self.validate(def_value)
 
     def validate(self, value):
-        if type(value) != self.data_type:
+        if value is not None and type(value) != self.data_type:
             raise ModelError(
                 'Field(%s) must be: %r' % (self.name, self.data_type), 400)
         return value
@@ -77,6 +77,20 @@ class ModelManager(object):
     def get(self, name):
         return self._model_class(name, os.path.join(self._model_dir, name))
 
+    def _create_children(self, name, props):
+        parent_model = None
+        for child in self._model_class.CHILDREN:
+            cname = child.__name__.lower() + 's'
+            if cname in props:
+                kids_props = props[cname]
+                del props[cname]
+                for child_props in kids_props:
+                    n = child_props['name']
+                    del child_props['name']
+                    if not parent_model:
+                        parent_model = self.get(name)
+                    getattr(parent_model, cname).create(n, child_props)
+
     def create(self, name, props):
         self._model_class.validate_props(props, save=True)
         try:
@@ -84,6 +98,11 @@ class ModelManager(object):
             os.makedirs(path)
             with open(os.path.join(path, 'props.json'), 'w') as f:
                 json.dump(props, f)
+            try:
+                self._create_children(name, props)
+            except:
+                rmtree(path)
+                raise
         except FileExistsError:
             raise ModelError('Item(%s) already exists' % name, 409)
 
@@ -95,6 +114,7 @@ class Model(object):
     @classmethod
     def validate_props(clazz, props, ignore_required=False, save=False):
         fields = {x.name: x for x in clazz.FIELDS}
+        kids = {x.__name__.lower() + 's': x for x in clazz.CHILDREN}
         for key, value in props.items():
             try:
                 field = fields[key]
@@ -103,8 +123,9 @@ class Model(object):
                     props[key] = field.save(value)
                 del fields[key]
             except KeyError:
-                raise ModelError(
-                    '%s: Unknown field: %s' % (clazz.__name__, key))
+                if key not in kids:
+                    raise ModelError(
+                        '%s: Unknown field: %s' % (clazz.__name__, key))
 
         if not ignore_required:
             required = []
@@ -172,4 +193,4 @@ class Model(object):
             os.rename(temp, p)
 
     def delete(self):
-        rmtree(os.path.join(self._modeldir))
+        rmtree(self._modeldir)

@@ -1,35 +1,19 @@
-import contextlib
-import crypt
 import datetime
-import hmac
 import os
 import time
 
 from cya_server.settings import (
-    MODELS_FILE, CONTAINER_TYPES, PINGS_DIR, CLIENT_SCRIPT, CONTAINER_LOGS_DIR)
-from cya_server.concurrently import json_data, json_get
-from cya_server.dict_model import Field, Model, ModelArrayField, ModelError
+    MODELS_DIR, CONTAINER_TYPES, CLIENT_SCRIPT)
+from cya_server.simplemodels import (
+    Field, Model, ModelManager, ModelError, SecretField)
 
 
 def client_version():
     return str(os.stat(CLIENT_SCRIPT).st_mtime)
 
 
-class SecretField(Field):
-    def __init__(self, name):
-        super(SecretField, self).__init__(
-            name, data_type=str, def_value='', required=False)
-
-    def pre_save(self, value):
-        return crypt.crypt(value, crypt.mksalt())
-
-    def verify(self, value, hashed):
-        return hmac.compare_digest(crypt.crypt(value, hashed), hashed)
-
-
 class Container(Model):
     FIELDS = [
-        Field('name', data_type=str),
         Field('template', data_type=str, required=False),
         Field('release', data_type=str, required=False),
         Field('init_script', data_type=str, required=False),
@@ -63,9 +47,7 @@ class Container(Model):
         return super(Container, self).update(data)
 
     def _get_console_file(self):
-        if not os.path.exists(CONTAINER_LOGS_DIR):
-            os.mkdir(CONTAINER_LOGS_DIR)
-        return os.path.join(CONTAINER_LOGS_DIR, self.name + '.log')
+        return os.path.join(self._modeldir, 'console.log')
 
     def append_console_log(self, content):
         with open(self._get_console_file(), 'a') as f:
@@ -92,7 +74,6 @@ class Container(Model):
 
 class Host(Model):
     FIELDS = [
-        Field('name', data_type=str),
         Field('distro_id', data_type=str),
         Field('distro_release', data_type=str),
         Field('distro_codename', data_type=str),
@@ -101,7 +82,9 @@ class Host(Model):
         Field('cpu_type', data_type=str),
         Field('enlisted', data_type=bool, def_value=False, required=False),
         SecretField('api_key'),
-        ModelArrayField('containers', Container, 'name'),
+    ]
+    CHILDREN = [
+        Container,
     ]
 
     def __repr__(self):
@@ -114,9 +97,7 @@ class Host(Model):
         raise ModelError('Container not found: %s' % name, 404)
 
     def _get_ping_file(self):
-        if not os.path.exists(PINGS_DIR):
-            os.mkdir(PINGS_DIR)
-        return os.path.join(PINGS_DIR, self.name + '.log')
+        return os.path.join(self._modeldir, 'pings.log')
 
     def ping(self):
         with open(self._get_ping_file(), mode='a') as f:
@@ -142,71 +123,54 @@ class InitScript(Model):
 
 class User(Model):
     FIELDS = [
-        Field('email', data_type=str),
         Field('nickname', data_type=str),
         Field('openid', data_type=str),
         Field('approved', data_type=bool, def_value=False),
         Field('admin', data_type=bool, def_value=False, required=False),
-        ModelArrayField('init_scripts', InitScript, 'name'),
+    ]
+    CHILDREN = [
+        InitScript,
     ]
 
 
-class ServerModel(Model):
-    FIELDS = [
-        ModelArrayField('hosts', Host, 'name'),
-        ModelArrayField('users', User, 'email'),
-    ]
-
-    def get_host(self, name):
-        for x in self.hosts:
-            if x.name == name:
-                return x
-        raise ModelError('Host not found: %s' % name, 404)
-
-    def get_user_by_openid(self, openid):
-        for x in self.users:
-            if x.openid == openid:
-                return x
-        return None
-
-    def find_best_host(self):
-        '''way too simplistic way to find a good host. should try and determine
-        when a host seems to be offline and find the 2nd best etc
-        '''
-        best_host = None
-        best_count = 0
-        for h in [x for x in self.hosts if x.online]:
-            count = len(h.containers)
-            if not best_host or count < best_count:
-                best_host = h
-                best_count = count
-        return best_host
-
-    def create_container(self, name, template, release, max_mem, init_script):
-        Container.validate_template_release(template, release)
-        h = self.find_best_host()
-        data = {
-            'name': name,
-            'template': template,
-            'release': release,
-            'init_script': init_script,
-            'max_memory': max_mem,
-            'date_requested': int(time.time()),
-            'state': 'QUEUED',
-        }
-        # TODO this is tied to find_best_host being dumb, these should get
-        # queued and not be tied to a host instantly, or moving a container
-        # that doesn't get created within some amount of time
-        h.containers.create(data)
-        return h
+hosts = ModelManager(MODELS_DIR, Host)
+users = ModelManager(MODELS_DIR, User)
 
 
-@contextlib.contextmanager
-def load(read_only=True, models_file=MODELS_FILE):
-    path = os.path.join(models_file)
-    if read_only:
-        data = json_get(path, create=True)
-        yield ServerModel(data)
-    else:
-        with json_data(path, create=True) as data:
-            yield ServerModel(data)
+def get_user_by_openid(openid):
+    for x in users:
+        if x.openid == openid:
+            return x
+    return None
+
+
+def find_best_host(self):
+    '''way too simplistic way to find a good host. should try and determine
+       when a host seems to be offline and find the 2nd best etc
+    '''
+    best_host = None
+    best_count = 0
+    for h in [x for x in hosts if x.online]:
+        count = len(h.containers)
+        if not best_host or count < best_count:
+            best_host = h
+            best_count = count
+    return best_host
+
+
+def create_container(self, name, template, release, max_mem, init_script):
+    Container.validate_template_release(template, release)
+    h = find_best_host()
+    data = {
+        'name': name,
+        'template': template,
+        'release': release,
+        'init_script': init_script,
+        'max_memory': max_mem,
+        'date_requested': int(time.time()),
+        'state': 'QUEUED',
+    }
+    # TODO this is tied to find_best_host being dumb, these should get
+    # queued and not be tied to a host instantly, or moving a container
+    # that doesn't get created within some amount of time
+    h.containers.create(data)
