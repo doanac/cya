@@ -6,7 +6,7 @@ from flask import (
 from flask.ext.openid import OpenID
 
 from cya_server import app, settings
-from cya_server.models import client_version, hosts, users
+from cya_server.models import client_version, create_container, hosts, users
 
 oid = OpenID(app, settings.OPENID_STORE, safe_roots=[])
 
@@ -98,7 +98,7 @@ def user_settings():
         return redirect(url_for('user_settings'))
 
     u = [users.get(x) for x in users.list()]
-    scripts = g.user.to_dict()['initscripts']
+    scripts = g.user.to_dict().get('initscripts', [])
     return render_template(
         'settings.html', settings=settings, users=u, user_scripts=scripts)
 
@@ -172,7 +172,7 @@ def host_container_log(host, container):
 
 
 @app.route('/create_container/', methods=['POST', 'GET'])
-def create_container():
+def ui_create_container():
     if g.user is None or 'openid' not in session:
         flash('You must be logged in to create a container')
         return redirect(url_for('login'))
@@ -186,8 +186,10 @@ def create_container():
         flash('Container requested')
         return redirect(url_for('index'))
 
+    scripts = g.user.to_dict()['initscripts']
     return render_template('create_container.html',
                            common_init_scripts=settings.INIT_SCRIPTS,
+                           user_scripts=scripts,
                            container_types=settings.CONTAINER_TYPES)
 
 

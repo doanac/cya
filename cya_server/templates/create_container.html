@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <h3>Create New Container</h3>
-<form action="{{ url_for('create_container') }}" method=post>
+<form action="{{ url_for('ui_create_container') }}" method=post>
   <div class="form-group">
     <label for="name">Name</label>
     <input type="string" class="form-control" name="name" placeholder="Name">
@@ -32,7 +32,7 @@
     {% for script in common_init_scripts %}
       <option onclick='document.getElementById("init-script").value={{script.content|tojson}}'>{{script.name}}</option>
     {% endfor %}
-    {% for script in g.user.init_scripts %}
+    {% for script in user_scripts %}
       <option onclick='document.getElementById("init-script").value={{script.content|tojson}}'>{{script.name}}</option>
     {% endfor %}
     </select>

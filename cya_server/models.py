@@ -145,7 +145,7 @@ def _get_user_by_openid(openid):
 users.get_user_by_openid = _get_user_by_openid
 
 
-def _find_best_host(self):
+def _find_best_host():
     '''way too simplistic way to find a good host. should try and determine
        when a host seems to be offline and find the 2nd best etc
     '''
@@ -155,7 +155,7 @@ def _find_best_host(self):
         h = hosts.get(h)
         if not h.online:
             next
-        count = len(h.containers)
+        count = len(list(h.containers.list()))
         if not best_host or count < best_count:
             best_host = h
             best_count = count
@@ -163,11 +163,10 @@ def _find_best_host(self):
 hosts.find_best_host = _find_best_host
 
 
-def create_container(self, name, template, release, max_mem, init_script):
+def create_container(name, template, release, max_mem, init_script):
     Container.validate_template_release(template, release)
     h = hosts.find_best_host()
     data = {
-        'name': name,
         'template': template,
         'release': release,
         'init_script': init_script,
@@ -178,4 +177,4 @@ def create_container(self, name, template, release, max_mem, init_script):
     # TODO this is tied to find_best_host being dumb, these should get
     # queued and not be tied to a host instantly, or moving a container
     # that doesn't get created within some amount of time
-    h.containers.create(data)
+    h.containers.create(name, data)
