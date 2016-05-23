@@ -158,6 +158,7 @@ def _uninstall(args):
 
 def _update_host(args):
     data = _host_props()
+    del data['name']
     try:
         with open(hostprops_cached) as f:
             cached = json.load(f)
@@ -165,7 +166,7 @@ def _update_host(args):
         cached = {}
 
     if cached != data:
-        log.info('updating host properies on server')
+        log.info('updating host properies on server: %s', data)
         _patch('/api/v1/host/%s/' % config.get('cya', 'hostname'), data)
         with open(hostprops_cached, 'w') as f:
             json.dump(data, f)
@@ -199,6 +200,7 @@ def _create_container(container_props):
 
 def _update_container(name, **kwargs):
     data = _container_props(name)
+    del data['name']
     if kwargs:
         data.update(kwargs)
     _patch('/api/v1/host/%s/container/%s/' %

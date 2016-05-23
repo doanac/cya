@@ -2,8 +2,8 @@ import functools
 
 from flask import jsonify, request
 
-from cya_server import app, models, settings
-from cya_server.dict_model import ModelError
+from cya_server import app, settings
+from cya_server.models import client_version, hosts, ModelError, SecretField
 
 
 def _is_host_authenticated(host):
@@ -11,7 +11,7 @@ def _is_host_authenticated(host):
     if key:
         parts = key.split(' ')
         if len(parts) == 2 and parts[0] == 'Token':
-            return host.api_key_field.verify(parts[1], host.api_key)
+            return SecretField.verify(parts[1], host.api_key)
     return False
 
 
@@ -28,12 +28,11 @@ def host_authenticated(f):
             resp = jsonify({'Message': 'Invalid Authorization header'})
             resp.status_code = 401
             return resp
-        with models.load(read_only=False) as m:
-            host = m.get_host(kwargs['name'])
-            if not host.api_key_field.verify(parts[1], host.api_key):
-                resp = jsonify({'Message': 'Incorrect API key for host'})
-                resp.status_code = 401
-                return resp
+        host = hosts.get(kwargs['name'])
+        if not SecretField.verify(parts[1], host.api_key):
+            resp = jsonify({'Message': 'Incorrect API key for host'})
+            resp.status_code = 401
+            return resp
         return f(*args, **kwargs)
     return wrapper
 
@@ -45,20 +44,20 @@ def _model_error_handler(error):
 
 @app.route('/api/v1/host/', methods=['GET'])
 def host_list():
-    with models.load() as m:
-        return jsonify({'hosts': [x.name for x in m.hosts]})
+    return jsonify({'hosts': [x for x in hosts.list()]})
 
 
 @app.route('/api/v1/host/', methods=['POST'])
 def host_create():
     if 'api_key' not in request.json:
-        raise models.ModelError('Missing required field: api_key')
+        raise ModelError('Missing required field: api_key')
     request.json['enlisted'] = settings.AUTO_ENLIST_HOSTS
-    with models.load(read_only=False) as m:
-        m.hosts.create(request.json)
+    name = request.json['name']
+    del request.json['name']
+    hosts.create(name, request.json)
     resp = jsonify({})
     resp.status_code = 201
-    resp.headers['Location'] = '/api/v1/host/%s/' % request.json['name']
+    resp.headers['Location'] = '/api/v1/host/%s/' % name
     return resp
 
 
@@ -68,56 +67,50 @@ def host_update(name):
     if 'enlisted' in request.json:
         raise ModelError('"enlisted" field cannot be updated via API')
 
-    with models.load(read_only=False) as m:
-        m.get_host(name).update(request.json)
+    hosts.get(name).update(request.json)
     return jsonify({})
 
 
 @app.route('/api/v1/host/<string:name>/', methods=['DELETE'])
 @host_authenticated
 def host_delete(name):
-    with models.load(read_only=False) as m:
-        m.get_host(name).delete()
+    hosts.get(name).delete()
     return jsonify({})
 
 
 @app.route('/api/v1/host/<string:name>/', methods=['GET'])
 def host_get(name):
-    with models.load() as m:
-        h = m.get_host(name)
-        if _is_host_authenticated(h):
-            h.ping()
-            h.data['client_version'] = models.client_version()
-        withcontainers = request.args.get('with_containers') is not None
-        if not withcontainers and 'containers' in h.data:
-            del h.data['containers']
-        if 'api_key' in h.data:
-            del h.data['api_key']
-        return jsonify(h.data)
+    h = hosts.get(name)
+    data = h.to_dict()
+    if _is_host_authenticated(h):
+        h.ping()
+        data['client_version'] = client_version()
+    withcontainers = request.args.get('with_containers') is not None
+    if not withcontainers and 'containers' in h.data:
+        del data['containers']
+    if 'api_key' in data:
+        del data['api_key']
+    return jsonify(data)
 
 
 @app.route('/api/v1/host/<string:name>/container/', methods=['GET'])
 def host_container_list(name):
-    with models.load() as m:
-        h = m.get_host(name)
-        return jsonify({'containers': [x.name for x in h.containers]})
+    h = hosts.get(name)
+    return jsonify({'containers': [x for x in h.containers.list()]})
 
 
 @app.route('/api/v1/host/<string:name>/container/<string:c>/', methods=['GET'])
 def host_container_get(name, c):
-    with models.load() as m:
-        h = m.get_host(name)
-        c = h.get_container(c)
-        return jsonify(c.data)
+    c = hosts.get(name).containers.get(c)
+    return jsonify(c.to_dict())
 
 
 @app.route('/api/v1/host/<string:name>/container/<string:c>/',
            methods=['PATCH'])
 @host_authenticated
 def host_container_update(name, c):
-    with models.load(read_only=False) as m:
-        h = m.get_host(name)
-        h.get_container(c).update(request.json)
+    c = hosts.get(name).containers.get(c)
+    c.update(request.json)
     return jsonify({})
 
 
@@ -125,9 +118,8 @@ def host_container_update(name, c):
            methods=['POST'])
 @host_authenticated
 def host_container_logs_update(name, c):
-    with models.load(read_only=True) as m:
-        h = m.get_host(name)
-        h.get_container(c).append_console_log(request.data.decode())
+    c = hosts.get(name).containers.get(c)
+    c.append_console_log(request.data.decode())
     resp = jsonify({})
     resp.status_code = 201
     return resp

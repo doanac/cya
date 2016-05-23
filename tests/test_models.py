@@ -17,7 +17,6 @@ h1 = {
 
 class TestModels(unittest.TestCase):
     def setUp(self):
-        # todo patch the models dir and start testing
         self.modelsdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.modelsdir)
         hosts._model_dir = os.path.join(self.modelsdir, 'hosts')
@@ -40,6 +39,7 @@ class TestModels(unittest.TestCase):
         h = hosts.get('host_1')
         self.assertEqual(1, len(list(h.containers.list())))
         self.assertEqual('foo', h.containers.get('c1').template)
+        self.assertEqual('c1', h.to_dict()['containers'][0]['name'])
 
     def test_secret(self):
         sf = SecretField('test')

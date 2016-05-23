@@ -23,7 +23,7 @@ function addScript() {
   <h3>User Defined Init Scripts</h3>
   <form action="{{ url_for('user_settings') }}" method=post>
     <div id="scripts">
-      {% for script in g.user.init_scripts %}
+      {% for script in user_scripts %}
       <div class="form-group">
         <div class="form-inline">
           <label for="script-name">Name:</label>

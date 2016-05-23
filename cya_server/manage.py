@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 
-from cya_server import app, models
+from cya_server import app
+from cya_server.models import create_container
 
 
 def _create_container(args):
-    with models.load(read_only=False) as m:
-        m.create_container(args.name, args.template, args.release,
-                           args.max_megs, args.init_script)
+    create_container(args.name, args.template, args.release,
+                     args.max_megs, args.init_script)
 
 
 def _run(args):

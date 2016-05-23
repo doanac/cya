@@ -28,6 +28,9 @@ class Field(object):
             self.validate(def_value)
 
     def validate(self, value):
+        if value is None and self.required:
+            raise ModelError(
+                'Field(%s) must not be None' % self.name, 400)
         if value is not None and type(value) != self.data_type:
             raise ModelError(
                 'Field(%s) must be: %r' % (self.name, self.data_type), 400)
@@ -178,6 +181,12 @@ class Model(object):
         data = {}
         for f in self.FIELDS:
             data[f.name] = self.getfield(f, self)
+        for ctype in self.CHILDREN:
+            cname = ctype.__name__.lower() + 's'
+            for child in getattr(self, cname).list():
+                cdata = getattr(self, cname).get(child).to_dict()
+                cdata['name'] = child
+                data.setdefault(cname, []).append(cdata)
         return data
 
     def update(self, props):

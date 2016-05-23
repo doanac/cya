@@ -61,7 +61,7 @@ class Container(Model):
             return f.read()
 
     def __repr__(self):
-        return self.data['name']
+        return self.name
 
     @staticmethod
     def validate_template_release(template, release):
@@ -116,7 +116,6 @@ class Host(Model):
 
 class InitScript(Model):
     FIELDS = [
-        Field('name', data_type=str),
         Field('content', data_type=str),
     ]
 
@@ -137,30 +136,36 @@ hosts = ModelManager(MODELS_DIR, Host)
 users = ModelManager(MODELS_DIR, User)
 
 
-def get_user_by_openid(openid):
-    for x in users:
+def _get_user_by_openid(openid):
+    for x in users.list():
+        x = users.get(x)
         if x.openid == openid:
             return x
     return None
+users.get_user_by_openid = _get_user_by_openid
 
 
-def find_best_host(self):
+def _find_best_host(self):
     '''way too simplistic way to find a good host. should try and determine
        when a host seems to be offline and find the 2nd best etc
     '''
     best_host = None
     best_count = 0
-    for h in [x for x in hosts if x.online]:
+    for h in [x for x in hosts.list()]:
+        h = hosts.get(h)
+        if not h.online:
+            next
         count = len(h.containers)
         if not best_host or count < best_count:
             best_host = h
             best_count = count
     return best_host
+hosts.find_best_host = _find_best_host
 
 
 def create_container(self, name, template, release, max_mem, init_script):
     Container.validate_template_release(template, release)
-    h = find_best_host()
+    h = hosts.find_best_host()
     data = {
         'name': name,
         'template': template,

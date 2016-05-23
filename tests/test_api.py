@@ -1,10 +1,11 @@
-import contextlib
 import json
 import os
-import unittest
+import shutil
 import tempfile
+import unittest
 
-from cya_server import app, models
+from cya_server import app
+from cya_server.models import hosts
 
 h1 = {
     'name': 'host_1',
@@ -21,20 +22,12 @@ h1 = {
 class ApiTests(unittest.TestCase):
 
     def setUp(self):
-        _, self.tmpfile = tempfile.mkstemp()
-        self.addCleanup(os.unlink, self.tmpfile)
-        self.orig_load = models.load
-        models.load = self.mock_load
+        self.modelsdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.modelsdir)
+        hosts._model_dir = os.path.join(self.modelsdir, 'hosts')
+        os.mkdir(hosts._model_dir)
         app.config['TESTING'] = True
         self.app = app.test_client()
-
-    def tearDown(self):
-        models.load = self.orig_load
-
-    @contextlib.contextmanager
-    def mock_load(self, read_only=True, models_file=None):
-        with self.orig_load(read_only, self.tmpfile) as m:
-            yield m
 
     def post_json(self, url, data, status_code=201):
         data = json.dumps(data)
@@ -57,9 +50,9 @@ class ApiTests(unittest.TestCase):
     def test_create_host(self):
         resp = self.post_json('/api/v1/host/', h1)
         self.assertEqual('http://localhost/api/v1/host/host_1/', resp.location)
-        with models.load() as m:
-            self.assertEqual(1, len(m.hosts))
-            self.assertEqual('host_1', m.hosts[0].name)
+        h = list(hosts.list())
+        self.assertEqual(1, len(h))
+        self.assertEqual('host_1', h[0])
 
         data = self.get_json('/api/v1/host/')
         self.assertEqual(1, len(data['hosts']))
@@ -74,10 +67,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual('http://localhost/api/v1/host/host_1/', resp.location)
 
         self.patch_json(resp.location, {'cpu_total': 123}, h1['api_key'])
-        with models.load() as m:
-            self.assertEqual(1, len(m.hosts))
-            self.assertEqual('host_1', m.hosts[0].name)
-            self.assertEqual(123, m.hosts[0].cpu_total)
+        h = hosts.get('host_1')
+        self.assertEqual(123, h.cpu_total)
 
     def test_delete_host(self):
         resp = self.post_json('/api/v1/host/', h1)
@@ -86,8 +77,8 @@ class ApiTests(unittest.TestCase):
         headers = [('Authorization', 'Token ' + h1['api_key'])]
         resp = self.app.delete(
             resp.location, headers=headers, content_type='application/json')
-        with models.load() as m:
-            self.assertEqual(0, len(m.hosts))
+        h = list(hosts.list())
+        self.assertEqual(0, len(h))
 
 
 if __name__ == '__main__':

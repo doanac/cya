@@ -4,7 +4,7 @@
     <th>Name</th><th>Template</th><th>Release</th><th>State</th><th>Actions</th>
   </tr>
   {% for h in hosts %}
-  {% for c in h.containers %}
+  {% for c in h.container_list %}
   <tr>
     {%if not hide_hosts%}<td><a href="{{url_for('host', name=h.name)}}">{{h.name}}</a></td>{%endif%}
     <td><a href="{{url_for('host_container', host=h.name, container=c.name)}}">{{c.name}}</a></td>
