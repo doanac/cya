@@ -88,7 +88,7 @@ class Host(Model):
     ]
 
     def __repr__(self):
-        return self.data['name']
+        return self.name
 
     def get_container(self, name):
         for c in self.containers:
@@ -154,7 +154,7 @@ def _find_best_host():
     for h in [x for x in hosts.list()]:
         h = hosts.get(h)
         if not h.online:
-            next
+            continue
         count = len(list(h.containers.list()))
         if not best_host or count < best_count:
             best_host = h
