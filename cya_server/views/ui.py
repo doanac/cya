@@ -245,9 +245,7 @@ def remove_container():
 
 @app.route('/cya_client.py')
 def client_py():
-    here = os.path.dirname(__file__)
-    script = os.path.join(here, '../../cya_client.py')
-    with open(script, 'rb') as f:
+    with open(settings.CLIENT_SCRIPT, 'rb') as f:
         return f.read()
 
 
@@ -257,5 +255,6 @@ def install_script():
     if base.endswith('/'):
         base = base[:-1]
     client = url_for('client_py', _external=True)
-    return render_template('client_install.sh', base_url=base,
+    lxd = settings.USE_LXD
+    return render_template('client_install.sh', base_url=base, lxd=lxd,
                            client_url=client, version=client_version())

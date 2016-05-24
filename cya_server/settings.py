@@ -6,10 +6,20 @@ _here = os.path.realpath(os.path.dirname(__file__))
 DEBUG = os.environ.get('DEBUG', '0')
 DEBUG = bool(int(DEBUG))
 
-CONTAINER_TYPES = {
-    'ubuntu-cloud': ['trusty', 'vivid', 'wily', 'precise'],
-    'debian': ['jessie'],
-}
+USE_LXD = True
+
+if USE_LXD:
+    CONTAINER_TYPES = {
+        'ubuntu': ['xenial', 'trusty', 'wily', 'precise'],
+        'debian': ['jessie'],
+    }
+    CLIENT_SCRIPT = os.path.join(_here, '../cya_client_lxd.py')
+else:
+    CONTAINER_TYPES = {
+        'ubuntu-cloud': ['xenial', 'trusty', 'vivid', 'wily', 'precise'],
+        'debian': ['jessie'],
+    }
+    CLIENT_SCRIPT = os.path.join(_here, '../cya_client.py')
 
 INIT_SCRIPTS = [
     {
@@ -26,7 +36,6 @@ INIT_SCRIPTS = [
 
 
 MODELS_DIR = os.path.join(_here, '../models')
-CLIENT_SCRIPT = os.path.join(_here, '../cya_client.py')
 SECRET_KEY = None
 AUTO_APPROVE_USER = True
 OPENID_STORE = os.path.join(_here, '../.openid')
