@@ -149,12 +149,14 @@ def _patch(resource, data):
     return _http_resp(resource, _auth_headers(), data, method='PATCH')
 
 
-def _post_logs(container, data):
+def _post_logs(container, logname, data):
+    if type(data) == str:
+        data = data.encode()
     headers = _auth_headers()
     headers['content-type'] = 'text/plain'
-    resource = '/api/v1/host/%s/container/%s/logs' % (
-        config.get('cya', 'hostname'), container)
-    return _http_resp(resource, headers, data.encode(), method='POST')
+    resource = '/api/v1/host/%s/container/%s/logs/%s' % (
+        config.get('cya', 'hostname'), container, logname)
+    return _http_resp(resource, headers, data, method='POST')
 
 
 def _host_props():
@@ -241,16 +243,17 @@ def _create_container(container_props):
     if init:
         args.append('--config=user.user-data=%s' % init)
 
-    # TODO console logs?
     subprocess.check_call(args)
     if init and not has_cloud_init:
         log.info('Running init script')
         p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
-                             stdin=subprocess.PIPE)
+                             stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             stdout=subprocess.PIPE)
         stdout, stderr = p.communicate(input=init.encode())
         if p.returncode != 0:
             log.error('Unable to run initscript: stdout(%s), stderr(%s)',
                       stdout, stderr)
+        _post_logs(container_props['name'], 'init_script', stdout)
 
 
 def _update_container(container):
@@ -276,22 +279,18 @@ def _upgrade_client(version):
 
 
 def _update_logs(ct, cache):
-    # TODO
-    '''try:
-        clog = ct.get_config_item('lxc.console.logfile')
-    except KeyError:
-        # no log file defined
-        return
-    cur_pos = cache.setdefault(ct.name, {}).get('logpos', 0)
-    try:
-        with open(clog) as f:
-            if os.fstat(f.fileno()).st_size > cur_pos:
-                log.debug('appending console log for %s', ct.name)
-                f.seek(cur_pos)
-                _post_logs(ct.name, f.read())
-                cache[ct.name]['logpos'] = f.tell()
-    except OSError:
-        pass  # log doesn't exist'''
+    for logname in ('cloud-init.log', 'cloud-init-output.log'):
+        logfile = os.path.join(
+            '/var/lib/lxd/containers', ct['name'], 'rootfs/var/log', logname)
+        if os.path.exists(logfile):
+            cur_pos = cache.setdefault(ct['name'], {}).get(logname, 0)
+            with open(logfile) as f:
+                if os.fstat(f.fileno()).st_size > cur_pos:
+                    log.debug('appending %s log for %s', logname, ct['name'])
+                    f.seek(cur_pos)
+                    name = os.path.splitext(logname)[0]
+                    _post_logs(ct['name'], name, f.read())
+                    cache[ct['name']][logname] = f.tell()
 
 
 def _handle_start_stop(container, container_props):
