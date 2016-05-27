@@ -46,18 +46,24 @@ class Container(Model):
             data['re_create'] = False
         return super(Container, self).update(data)
 
-    def _get_console_file(self):
-        return os.path.join(self._modeldir, 'console.log')
+    def _get_log_file(self, logname):
+        logdir = os.path.join(self._modeldir, 'logs')
+        if not os.path.exists(logdir):
+            os.mkdir(logdir)
+        return os.path.join(logdir, logname)
 
-    def append_console_log(self, content):
-        with open(self._get_console_file(), 'a') as f:
+    def append_log(self, logname, content):
+        with open(self._get_log_file(logname), 'a') as f:
             f.write(content)
 
-    def has_console_log(self):
-        return os.path.exists(self._get_console_file())
+    def get_log_names(self):
+        logdir = os.path.join(self._modeldir, 'logs')
+        if os.path.exists(logdir):
+            return os.listdir(logdir)
+        return []
 
-    def get_console_log(self):
-        with open(self._get_console_file()) as f:
+    def get_log(self, logname):
+        with open(self._get_log_file(logname)) as f:
             return f.read()
 
     def __repr__(self):

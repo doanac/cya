@@ -1,5 +1,3 @@
-import os
-
 from flask import (
     g, flash, redirect, render_template, request, Response, session, url_for
 )
@@ -159,16 +157,16 @@ def host_container(host, container):
     return render_template('container.html', host=h, container=c)
 
 
-@app.route('/host/<string:host>/<string:container>/log')
-def host_container_log(host, container):
+@app.route('/host/<string:host>/<string:container>/log/<string:logname>')
+def host_container_log(host, container, logname):
     if g.user is None or 'openid' not in session:
         flash('You must be logged in to view container logs')
         return redirect(url_for('login'))
     try:
-        log = hosts.get(host).containers.get(container).get_console_log()
+        log = hosts.get(host).containers.get(container).get_log(logname)
         return Response(log, 200, mimetype='text/plain')
     except FileNotFoundError:
-        return ('This container has no console logs', 404)
+        return ('This container has no %s log' % logname, 404)
 
 
 @app.route('/create_container/', methods=['POST', 'GET'])

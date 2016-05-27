@@ -114,12 +114,12 @@ def host_container_update(name, c):
     return jsonify({})
 
 
-@app.route('/api/v1/host/<string:name>/container/<string:c>/logs',
+@app.route('/api/v1/host/<string:name>/container/<string:c>/logs/<string:l>',
            methods=['POST'])
 @host_authenticated
-def host_container_logs_update(name, c):
+def host_container_logs_update(name, c, l):
     c = hosts.get(name).containers.get(c)
-    c.append_console_log(request.data.decode())
+    c.append_log(l, request.data.decode())
     resp = jsonify({})
     resp.status_code = 201
     return resp

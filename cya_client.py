@@ -103,7 +103,7 @@ def _patch(resource, data):
 def _post_logs(container, data):
     headers = _auth_headers()
     headers['content-type'] = 'text/plain'
-    resource = '/api/v1/host/%s/container/%s/logs' % (
+    resource = '/api/v1/host/%s/container/%s/logs/console' % (
         config.get('cya', 'hostname'), container)
     return _http_resp(resource, headers, data.encode(), method='POST')
 
