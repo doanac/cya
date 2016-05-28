@@ -4,7 +4,8 @@ from flask import (
 from flask.ext.openid import OpenID
 
 from cya_server import app, settings
-from cya_server.models import client_version, create_container, hosts, users
+from cya_server.models import (
+    client_version, create_container, hosts, shared_storage, users)
 
 oid = OpenID(app, settings.OPENID_STORE, safe_roots=[])
 
@@ -97,8 +98,29 @@ def user_settings():
 
     u = [users.get(x) for x in users.list()]
     scripts = g.user.to_dict().get('initscripts', [])
+    ss = [shared_storage.get(x) for x in shared_storage.list()]
     return render_template(
-        'settings.html', settings=settings, users=u, user_scripts=scripts)
+        'settings.html', settings=settings, users=u, user_scripts=scripts,
+        shared_storage=ss)
+
+
+@app.route('/shared_storage/', methods=['POST'])
+def shared_storage_settings():
+    if g.user is None or 'openid' not in session:
+        return redirect(url_for('login'))
+    if not g.user.admin:
+        flash('you must be an admin to change shared storage')
+        return redirect(url_for('login'))
+
+    name = request.form.get('volname')
+    voltype = request.form.get('voltype')
+    source = request.form.get('volsource')
+
+    if name and voltype and source:
+        shared_storage.create(name, {'type': voltype, 'source': source})
+    else:
+        flash('Name, Type, and Source are all required', category='Error')
+    return redirect(url_for('user_settings'))
 
 
 @app.route('/global_settings/', methods=['POST'])

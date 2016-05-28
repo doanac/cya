@@ -138,8 +138,16 @@ class User(Model):
     ]
 
 
+class SharedStorage(Model):
+    FIELDS = [
+        Field('type', data_type=str),
+        Field('source', data_type=str)
+    ]
+
+
 hosts = ModelManager(MODELS_DIR, Host)
 users = ModelManager(MODELS_DIR, User)
+shared_storage = ModelManager(MODELS_DIR, SharedStorage)
 
 
 def _get_user_by_openid(openid):
