@@ -12,6 +12,14 @@ def client_version():
     return str(os.stat(CLIENT_SCRIPT).st_mtime)
 
 
+class ContainerMount(Model):
+    FIELDS = [
+        Field('type', data_type=str),
+        Field('source', data_type=str),
+        Field('directory', data_type=str),
+    ]
+
+
 class Container(Model):
     FIELDS = [
         Field('template', data_type=str, required=False),
@@ -25,6 +33,7 @@ class Container(Model):
         Field('keep_running', data_type=bool, def_value=True, required=False),
         Field('ips', data_type=str, required=False),
     ]
+    CHILDREN = [ContainerMount]
 
     @property
     def requested_str(self):
@@ -177,7 +186,8 @@ def _find_best_host():
 hosts.find_best_host = _find_best_host
 
 
-def create_container(name, template, release, max_mem, init_script):
+def create_container(name, template, release, max_mem, init_script,
+                     mounts=None):
     Container.validate_template_release(template, release)
     h = hosts.find_best_host()
     data = {
@@ -188,6 +198,17 @@ def create_container(name, template, release, max_mem, init_script):
         'date_requested': int(time.time()),
         'state': 'QUEUED',
     }
+    if mounts:
+        container_mounts = []
+        for ss_name, directory in mounts:
+            ss = shared_storage.get(ss_name)
+            container_mounts.append({
+                'name': ss.name,
+                'type': ss.type,
+                'source': ss.source,
+                'directory': directory
+            })
+        data['containermounts'] = container_mounts
     # TODO this is tied to find_best_host being dumb, these should get
     # queued and not be tied to a host instantly, or moving a container
     # that doesn't get created within some amount of time

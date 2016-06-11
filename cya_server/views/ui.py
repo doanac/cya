@@ -201,15 +201,24 @@ def ui_create_container():
         template, release = request.form['container-type'].split(':')
         max_mem = int(request.form['max-memory']) * 1000000000
         init_script = request.form['init-script'].replace('\r', '')
+
+        ss = []
+        for x in request.form.keys():
+            if x[:3] == 'ss_':
+                directory = request.form[x]
+                if directory:
+                    ss.append((x[3:], directory))
+
         create_container(
-            request.form['name'], template, release, max_mem, init_script)
+            request.form['name'], template, release, max_mem, init_script, ss)
         flash('Container requested')
         return redirect(url_for('index'))
 
+    ss = [shared_storage.get(x) for x in shared_storage.list()]
     scripts = g.user.to_dict()['initscripts']
     return render_template('create_container.html',
                            common_init_scripts=settings.INIT_SCRIPTS,
-                           user_scripts=scripts,
+                           user_scripts=scripts, shared_storage=ss,
                            container_types=settings.CONTAINER_TYPES)
 
 

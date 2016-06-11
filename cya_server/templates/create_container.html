@@ -25,6 +25,15 @@
       <option value="8">8G</option>
     </select>
   </div>
+  <label for="shared-storage">Shared Storage</label>
+  <div id="shared-storage" class="form-group">
+    {% for item in shared_storage %}
+      <label class="col-sm-3 control-label" for="{{item.name}}">{{item.name}}</label>
+      <div class="col-sm-9">
+        <input type="text" class="form-control" id="{{item.name}}" name="ss_{{item.name}}" placeholder="/mnt/foo"/>
+      </div>
+    {% endfor %}
+  </div>
   <div class="form-group">
     <label for="init-script-template">Init Script Template</label>
     <select name="init-script-template" class="form-control">

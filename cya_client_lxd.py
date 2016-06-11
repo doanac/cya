@@ -36,6 +36,25 @@ logging.basicConfig(
 log = logging.getLogger('cya-client')
 
 
+def _mount_container_volumes(container_props, unmount=False):
+    name = container_props['name']
+    mounts = os.path.join(os.path.dirname(script), 'shared_storage', name)
+    for mount in container_props.get('containermounts', []):
+        mount_dir = os.path.join(mounts, mount['name'])
+        if unmount and os.path.exists(mount_dir):
+            log.debug('unmounting: %s', mount_dir)
+            subprocess.check_call(['umount', mount_dir])
+            os.rmdir(mount_dir)
+        elif not unmount:
+            if not os.path.exists(mount_dir):
+                os.makedirs(mount_dir)
+            log.debug('mounting: %s', mount_dir)
+            subprocess.check_call(
+                ['mount', '-t', mount['type'],  mount['source'], mount_dir])
+    if unmount and os.path.exists(mounts):
+        os.rmdir(mounts)
+
+
 def lxd_containers():
     containers = subprocess.check_output(['lxc', 'list', '--format=json'])
     containers = json.loads(containers.decode())
@@ -49,14 +68,16 @@ def lxd_containers():
     return {x['name']: x for x in containers}
 
 
-def lxc_container_stop(container):
+def lxc_container_stop(container, container_props):
     log.debug('stopping container: %s', container['name'])
     subprocess.check_call(['lxc', 'stop', container['name']])
+    _mount_container_volumes(container_props, unmount=True)
     container['status'] = 'Stopped'
 
 
-def lxc_container_start(container):
+def lxc_container_start(container, container_props):
     log.debug('starting container: %s', container['name'])
+    _mount_container_volumes(container_props)
     subprocess.check_call(['lxc', 'start', container['name']])
     container['status'] = 'Running'
 
@@ -177,17 +198,21 @@ def _container_props(container):
     max_mem = lxd_container_get_max_memory(container['name'])
     created = time.mktime(
         dateutil.parser.parse(container['created_at']).timetuple())
-    os, release = lxd_image_info(container)
-    return {
+    props = {
         'name': container['name'],
         'max_memory': max_mem,
         'date_created': int(created),
         'state': container['status'].upper(),
         'init_script': container['config'].get('user.user-data', ''),
         'ips': container['ips'],
-        'template': os,
-        'release': release,
     }
+    try:
+        os, release = lxd_image_info(container)
+        props['template'] = os
+        props['release'] = release
+    except:
+        log.debug('image info for %s no longer available', container['name'])
+    return props
 
 
 def _register_host(args):
@@ -224,6 +249,18 @@ def _update_host(args):
             json.dump(data, f)
 
 
+def _create_shared_mounts(container_props):
+    mounts = os.path.join(
+        os.path.dirname(script), 'shared_storage', container_props['name'])
+    for mount in container_props.get('containermounts', []):
+        log.debug('adding device to container')
+        mp = os.path.join(mounts, mount['name'])
+        subprocess.check_call([
+            'lxc', 'config', 'device', 'add', container_props['name'],
+            mount['name'], 'disk', 'source=' + mp,
+            'path=%s' % mount['directory']])
+
+
 def _create_container(container_props):
     log.debug('container props: %r', container_props)
     has_cloud_init = container_props['template'] == 'ubuntu'
@@ -233,7 +270,7 @@ def _create_container(container_props):
         arch = IMAGE_ARCH[platform.processor()]
         image = 'images:%s/%s/%s' % (
             container_props['template'], container_props['release'], arch)
-    args = ['lxc', 'launch', image, container_props['name']]
+    args = ['lxc', 'init', image, container_props['name']]
 
     mem = container_props.get('max_memory')
     if mem:
@@ -244,6 +281,9 @@ def _create_container(container_props):
         args.append('--config=user.user-data=%s' % init)
 
     subprocess.check_call(args)
+    _create_shared_mounts(container_props)
+    lxc_container_start({'name': container_props['name']}, container_props)
+
     if init and not has_cloud_init:
         log.info('Running init script')
         p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
@@ -298,10 +338,10 @@ def _handle_start_stop(container, container_props):
     status = container['status'].upper()
     should_run = container_props[name].get('keep_running', True)
     if should_run and status != 'RUNNING':
-        lxc_container_start(container)
+        lxc_container_start(container, container_props[name])
         return True
     elif not should_run and status != 'STOPPED':
-        lxc_container_stop(container)
+        lxc_container_stop(container, container_props[name])
         return True
     elif container_props[name].get('state') != status:
         log.debug('updating container(%s) state to: %s', name, status)
@@ -312,7 +352,7 @@ def _handle_start_stop(container, container_props):
 def _handle_ips(container, cache):
     name = container['name']
     status = container['status']
-    cached_ips = cache.setdefault(name, {'ips': ''})['ips']
+    cached_ips = cache.setdefault(name, {}).get('ips', '')
     if status == 'Running' and container['ips'] != cached_ips:
         cache[name]['ips'] = container['ips']
         return True
@@ -330,10 +370,16 @@ def _handle_adds(container_props, to_add):
         _update_container(lxd_containers()[x])
 
 
-def _handle_dels(to_del):
+def _handle_dels(container_props, to_del):
     for x in to_del:
         print('Deleting container: %s' % x)
         subprocess.check_call(['lxc', 'delete', '--force', x])
+        mounts = os.path.join(os.path.dirname(script), 'shared_storage', x)
+        for mount in os.listdir(mounts):
+            mount = os.path.join(mounts, mount)
+            subprocess.check_call(['umount', mount])
+            os.rmdir(mount)
+        os.rmdir(mounts)
 
 
 def _handle_existing(lxc_containers, container_props, names):
@@ -346,7 +392,7 @@ def _handle_existing(lxc_containers, container_props, names):
     for name in names:
         container = lxc_containers[name]
         if container_props[name].get('re_create'):
-            _handle_dels([name])
+            _handle_dels(container_props, [name])
             _handle_adds(container_props, [name])
         else:
             changed = _handle_start_stop(container, container_props)
@@ -374,7 +420,7 @@ def _check(args):
     local_names = set(containers.keys())
 
     _handle_adds(rem_containers, rem_names - local_names)
-    _handle_dels(local_names - rem_names)
+    _handle_dels(rem_containers, local_names - rem_names)
     _handle_existing(containers, rem_containers, rem_names & local_names)
 
 
