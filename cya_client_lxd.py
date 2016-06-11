@@ -203,7 +203,7 @@ def _container_props(container):
         'max_memory': max_mem,
         'date_created': int(created),
         'state': container['status'].upper(),
-        'init_script': container['config'].get('user.user-data', ''),
+        'init_script': container['config'].get('user.cya_init', ''),
         'ips': container['ips'],
     }
     try:
@@ -263,28 +263,23 @@ def _create_shared_mounts(container_props):
 
 def _create_container(container_props):
     log.debug('container props: %r', container_props)
-    has_cloud_init = container_props['template'] == 'ubuntu'
-    if has_cloud_init:
-        image = container_props['template'] + ':' + container_props['release']
-    else:
-        arch = IMAGE_ARCH[platform.processor()]
-        image = 'images:%s/%s/%s' % (
-            container_props['template'], container_props['release'], arch)
+    arch = IMAGE_ARCH[platform.processor()]
+    image = 'images:%s/%s/%s' % (
+        container_props['template'], container_props['release'], arch)
     args = ['lxc', 'init', image, container_props['name']]
 
     mem = container_props.get('max_memory')
     if mem:
         args.append('--config=limits.memory=%dMB' % (mem / 1000000))
     init = container_props.get('init_script')
-
     if init:
-        args.append('--config=user.user-data=%s' % init)
+        args.append('--config=user.cya_init=%s' % init)
 
     subprocess.check_call(args)
     _create_shared_mounts(container_props)
     lxc_container_start({'name': container_props['name']}, container_props)
 
-    if init and not has_cloud_init:
+    if init:
         log.info('Running init script')
         p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
                              stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -375,11 +370,12 @@ def _handle_dels(container_props, to_del):
         print('Deleting container: %s' % x)
         subprocess.check_call(['lxc', 'delete', '--force', x])
         mounts = os.path.join(os.path.dirname(script), 'shared_storage', x)
-        for mount in os.listdir(mounts):
-            mount = os.path.join(mounts, mount)
-            subprocess.check_call(['umount', mount])
-            os.rmdir(mount)
-        os.rmdir(mounts)
+        if os.path.exists(mounts):
+            for mount in os.listdir(mounts):
+                mount = os.path.join(mounts, mount)
+                subprocess.check_call(['umount', mount])
+                os.rmdir(mount)
+            os.rmdir(mounts)
 
 
 def _handle_existing(lxc_containers, container_props, names):
