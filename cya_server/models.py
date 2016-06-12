@@ -154,9 +154,14 @@ class SharedStorage(Model):
     ]
 
 
+class ContainerRequest(Container):
+    pass
+
+
 hosts = ModelManager(MODELS_DIR, Host)
 users = ModelManager(MODELS_DIR, User)
 shared_storage = ModelManager(MODELS_DIR, SharedStorage)
+container_requests = ModelManager(MODELS_DIR, ContainerRequest)
 
 
 def _get_user_by_openid(openid):
@@ -168,28 +173,27 @@ def _get_user_by_openid(openid):
 users.get_user_by_openid = _get_user_by_openid
 
 
-def _find_best_host():
-    '''way too simplistic way to find a good host. should try and determine
-       when a host seems to be offline and find the 2nd best etc
-    '''
-    best_host = None
-    best_count = 0
-    for h in [x for x in hosts.list()]:
-        h = hosts.get(h)
-        if not h.online:
-            continue
-        count = len(list(h.containers.list()))
-        if not best_host or count < best_count:
-            best_host = h
-            best_count = count
-    return best_host
-hosts.find_best_host = _find_best_host
+def _container_request_handle(host):
+    '''Dumb logic but find host with least number of containers'''
+    requests = list(container_requests.list())
+    if not requests:
+        return
+    h = [hosts.get(x) for x in hosts.list()]
+    h = [x for x in h if x.online]
+    h = sorted(h, key=lambda x: len(list(x.containers.list())))
+    match = host.name == h[0].name
+
+    if match:
+        print("MOVING REQUEST to host")
+        r = container_requests.get(requests[0])
+        host.containers.create(r.name, r.to_dict())
+        r.delete()
+container_requests.handle = _container_request_handle
 
 
 def create_container(name, template, release, max_mem, init_script,
                      mounts=None):
     Container.validate_template_release(template, release)
-    h = hosts.find_best_host()
     data = {
         'template': template,
         'release': release,
@@ -209,7 +213,4 @@ def create_container(name, template, release, max_mem, init_script,
                 'directory': directory
             })
         data['containermounts'] = container_mounts
-    # TODO this is tied to find_best_host being dumb, these should get
-    # queued and not be tied to a host instantly, or moving a container
-    # that doesn't get created within some amount of time
-    h.containers.create(name, data)
+    container_requests.create(name, data)

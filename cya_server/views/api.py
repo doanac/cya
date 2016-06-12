@@ -3,7 +3,8 @@ import functools
 from flask import jsonify, request
 
 from cya_server import app, settings
-from cya_server.models import client_version, hosts, ModelError, SecretField
+from cya_server.models import (
+    client_version, container_requests, hosts, ModelError, SecretField)
 
 
 def _is_host_authenticated(host):
@@ -81,10 +82,12 @@ def host_delete(name):
 @app.route('/api/v1/host/<string:name>/', methods=['GET'])
 def host_get(name):
     h = hosts.get(name)
-    data = h.to_dict()
     if _is_host_authenticated(h):
         h.ping()
-        data['client_version'] = client_version()
+        container_requests.handle(h)
+
+    data = h.to_dict()
+    data['client_version'] = client_version()
     withcontainers = request.args.get('with_containers') is not None
     if not withcontainers and 'containers' in h.data:
         del data['containers']

@@ -5,7 +5,8 @@ from flask.ext.openid import OpenID
 
 from cya_server import app, settings
 from cya_server.models import (
-    client_version, create_container, hosts, shared_storage, users)
+    client_version, container_requests, create_container, hosts,
+    shared_storage, users)
 
 oid = OpenID(app, settings.OPENID_STORE, safe_roots=[])
 
@@ -74,7 +75,8 @@ def index():
     host_list = [hosts.get(x) for x in hosts.list()]
     for h in host_list:
         h.container_list = [h.containers.get(x) for x in h.containers.list()]
-    return render_template('index.html', hosts=host_list)
+    requests = [container_requests.get(x) for x in container_requests.list()]
+    return render_template('index.html', hosts=host_list, requests=requests)
 
 
 @app.route('/settings/', methods=['POST', 'GET'])
