@@ -6,30 +6,24 @@ _here = os.path.realpath(os.path.dirname(__file__))
 DEBUG = os.environ.get('DEBUG', '0')
 DEBUG = bool(int(DEBUG))
 
-USE_LXD = True
+CLIENT_SCRIPT = os.path.join(_here, '../cya_client_lxd.py')
 
-if USE_LXD:
-    CONTAINER_TYPES = {
-        'ubuntu': ['xenial', 'trusty', 'wily', 'precise'],
-        'debian': ['jessie'],
-    }
-    CLIENT_SCRIPT = os.path.join(_here, '../cya_client_lxd.py')
-else:
-    CONTAINER_TYPES = {
-        'ubuntu-cloud': ['xenial', 'trusty', 'vivid', 'wily', 'precise'],
-        'debian': ['jessie'],
-    }
-    CLIENT_SCRIPT = os.path.join(_here, '../cya_client.py')
+CONTAINER_TYPES = {
+    'ubuntu': ['xenial', 'trusty', 'wily', 'precise'],
+    'debian': ['jessie'],
+}
 
 INIT_SCRIPTS = [
     {
-        'name': 'ubuntu-cloud ssh-import keys',
+        'name': 'wait-for-network',
         'content': textwrap.dedent('''\
             #!/bin/sh
-            cat >/etc/cloud/cloud.cfg.d/99_cya.cfg <<EOF
-            runcmd:
-              - sudo -i -u ubuntu ssh-import-id YOUR_USERNAME
-            EOF
+            # wait for network
+            set -ex
+            for x in 1 2 3 4 5 ; do
+                sleep 3
+                ping -c1 google.com && break || true
+            done
         ''')
     },
 ]

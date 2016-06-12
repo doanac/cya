@@ -284,6 +284,5 @@ def install_script():
     if base.endswith('/'):
         base = base[:-1]
     client = url_for('client_py', _external=True)
-    lxd = settings.USE_LXD
-    return render_template('client_install.sh', base_url=base, lxd=lxd,
+    return render_template('client_install.sh', base_url=base,
                            client_url=client, version=client_version())
