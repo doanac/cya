@@ -2,7 +2,7 @@ CYA - Contain Your Assets
 =========================
 
 This is a simple client/server program to allow a pool of bare-metal systems
-provide LXC containers on-demand. Think of it like OpenStack minus the insane
+provide LXD containers on-demand. Think of it like OpenStack minus the insane
 complexity and, until recently, lack of container support.
 
 You setup a "cya server" on one system and then install clients as you wish.
@@ -41,17 +41,19 @@ Example Init Script
 Here's a script I use at home to set up my Ubuntu containers with::
 
  #!/bin/sh
+ set -ex
 
- cat >/etc/cloud/cloud.cfg.d/99_doanac.cfg <<EOF
- runcmd:
-   - usermod -g users ubuntu
-   - sudo -i -u ubuntu ssh-import-id doanac
-   - echo "0,30 * * * * ubuntu ssh-import-id doanac" > /etc/cron.d/sshkey-sync
-   - mkdir /code /storage
-   - echo "reckless:/code   /code   nfs    auto  0  0" >> /etc/fstab
-   - echo "storage:/home   /storage   nfs    auto  0  0" >> /etc/fstab
-   - apt-get update
-   - apt-get install -y ssl-cert git
-   - apt-get install -y nfs-common
-   - mount -a
- EOF
+ # wait for network
+ for x in 1 2 3 4 5 ; do
+     sleep 3
+     ping -c1 google.com && break || true
+ done
+
+ apt-get update
+ apt-get install -y software-properties-common sudo ssl-cert git ssh-import-id openssh-server bash-completion
+
+ usermod -g users ubuntu
+ echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu_nopassword
+
+ sudo -i -u ubuntu ssh-import-id doanac
+ echo "0,30 * * * * ubuntu ssh-import-id doanac" > /etc/cron.d/sshkey-sync
