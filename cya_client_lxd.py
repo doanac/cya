@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import platform
+import select
 import sys
 import subprocess
 import time
@@ -261,6 +262,45 @@ def _create_shared_mounts(container_props):
             'path=%s' % mount['directory']])
 
 
+def _run_init(container_props):
+    log.info('Fork and run init script')
+    if os.fork():
+        return
+    lockfile.close()
+    buff = '\n== CYA-INIT-SCRIPT STARTED at: %s\n' % time.asctime()
+    _post_logs(container_props['name'], 'init_script', buff.encode())
+    p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
+                         stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         stdout=subprocess.PIPE, close_fds=True)
+    p.stdin.write(container_props['init_script'].encode())
+    p.stdin.close()
+
+    poller = select.poll()
+    RONLY = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
+    poller.register(p.stdout.fileno(), RONLY)
+    last_update = 0
+    buff = b''
+    while poller:
+        events = poller.poll()
+        for fd, flag in events:
+            data = os.read(fd, 1024)
+            if data:
+                buff += data
+                now = time.time()
+                # update server log ever 20s or 8k bytes
+                if now - last_update > 20 or len(buff) > 8192:
+                    _post_logs(container_props['name'], 'init_script', buff)
+                    last_update = now
+                    buff = b''
+            else:
+                poller = None
+    p.wait()
+    buff += b'\n== RC=%d' % p.returncode
+    buff = '\n== CYA-INIT-SCRIPT ENDED at: %s RC=%d\n' % (
+        time.asctime(), p.returncode)
+    _post_logs(container_props['name'], 'init_script', buff.encode())
+
+
 def _create_container(container_props):
     log.debug('container props: %r', container_props)
     arch = IMAGE_ARCH[platform.processor()]
@@ -280,15 +320,7 @@ def _create_container(container_props):
     lxc_container_start({'name': container_props['name']}, container_props)
 
     if init:
-        log.info('Running init script')
-        p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
-                             stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             stdout=subprocess.PIPE)
-        stdout, stderr = p.communicate(input=init.encode())
-        if p.returncode != 0:
-            log.error('Unable to run initscript: stdout(%s), stderr(%s)',
-                      stdout, stderr)
-        _post_logs(container_props['name'], 'init_script', stdout)
+        _run_init(container_props)
 
 
 def _update_container(container):
@@ -302,15 +334,9 @@ def _upgrade_client(version):
     script = _http_resp('/cya_client.py', {}).read()
     with open(__file__, 'wb') as f:
         f.write(script)
-    p = os.fork()
-    if p == 0:
-        log.debug('waiting 2 seconds for parent to exit')
-        time.sleep(2)
-        args = [__file__, 'register', config.get('cya', 'server_url'), version]
-        os.execv(args[0], args)
-    else:
-        log.debug('exiting client to let child run')
-        sys.exit()
+        f.flush()
+    args = [__file__, 'register', config.get('cya', 'server_url'), version]
+    os.execv(args[0], args)
 
 
 def _update_logs(ct, cache):
@@ -455,4 +481,6 @@ if __name__ == '__main__':
         except IOError:
             log.debug('Script is already running')
             sys.exit(0)
+        global lockfile
+        lockfile = f
         main(get_args())
