@@ -178,7 +178,8 @@ def host(name):
 def host_container(host, container):
     h = hosts.get(host)
     c = h.containers.get(container)
-    return render_template('container.html', host=h, container=c)
+    s = [c.initscripts.get(x) for x in c.initscripts.list()]
+    return render_template('container.html', host=h, container=c, scripts=s)
 
 
 @app.route('/host/<string:host>/<string:container>/log/<string:logname>')

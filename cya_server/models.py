@@ -20,6 +20,12 @@ class ContainerMount(Model):
     ]
 
 
+class InitScript(Model):
+    FIELDS = [
+        Field('content', data_type=str),
+    ]
+
+
 class Container(Model):
     FIELDS = [
         Field('template', data_type=str, required=False),
@@ -33,7 +39,7 @@ class Container(Model):
         Field('keep_running', data_type=bool, def_value=True, required=False),
         Field('ips', data_type=str, required=False),
     ]
-    CHILDREN = [ContainerMount]
+    CHILDREN = [ContainerMount, InitScript]
 
     @property
     def requested_str(self):
@@ -129,12 +135,6 @@ class Host(Model):
         return now - mtime < 180  # pinged in last 3 minutes
 
 
-class InitScript(Model):
-    FIELDS = [
-        Field('content', data_type=str),
-    ]
-
-
 class User(Model):
     FIELDS = [
         Field('nickname', data_type=str),
@@ -184,7 +184,6 @@ def _container_request_handle(host):
     match = host.name == h[0].name
 
     if match:
-        print("MOVING REQUEST to host")
         r = container_requests.get(requests[0])
         host.containers.create(r.name, r.to_dict())
         r.delete()
@@ -197,11 +196,12 @@ def create_container(name, template, release, max_mem, init_script,
     data = {
         'template': template,
         'release': release,
-        'init_script': init_script,
         'max_memory': max_mem,
         'date_requested': int(time.time()),
         'state': 'QUEUED',
     }
+    if init_script:
+        data['initscripts'] = [{'name': 'init', 'content': init_script}]
     if mounts:
         container_mounts = []
         for ss_name, directory in mounts:

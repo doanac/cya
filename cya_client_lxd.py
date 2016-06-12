@@ -262,17 +262,14 @@ def _create_shared_mounts(container_props):
             'path=%s' % mount['directory']])
 
 
-def _run_init(container_props):
-    log.info('Fork and run init script')
-    if os.fork():
-        return
-    lockfile.close()
-    buff = '\n== CYA-INIT-SCRIPT STARTED at: %s\n' % time.asctime()
-    _post_logs(container_props['name'], 'init_script', buff.encode())
-    p = subprocess.Popen(['lxc', 'exec', container_props['name'], 'bash'],
+def _run_init(container_name, name, script):
+    log.info('Running init script: %s', name)
+    buff = '\n== CYA-INIT-SCRIPT(%s) STARTED at: %s\n' % (name, time.asctime())
+    _post_logs(container_name, name, buff.encode())
+    p = subprocess.Popen(['lxc', 'exec', container_name, 'bash'],
                          stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
                          stdout=subprocess.PIPE, close_fds=True)
-    p.stdin.write(container_props['init_script'].encode())
+    p.stdin.write(script.encode())
     p.stdin.close()
 
     poller = select.poll()
@@ -289,16 +286,26 @@ def _run_init(container_props):
                 now = time.time()
                 # update server log ever 20s or 8k bytes
                 if now - last_update > 20 or len(buff) > 8192:
-                    _post_logs(container_props['name'], 'init_script', buff)
+                    _post_logs(container_name, name, buff)
                     last_update = now
                     buff = b''
             else:
                 poller = None
     p.wait()
     buff += b'\n== RC=%d' % p.returncode
-    buff = '\n== CYA-INIT-SCRIPT ENDED at: %s RC=%d\n' % (
-        time.asctime(), p.returncode)
-    _post_logs(container_props['name'], 'init_script', buff.encode())
+    buff = '\n== CYA-INIT-SCRIPT(%s) ENDED at: %s RC=%d\n' % (
+        name, time.asctime(), p.returncode)
+    _post_logs(container_name, name, buff.encode())
+    return p.returncode
+
+
+def _run_init_scripts(container_props):
+    log.info('Fork and run init script')
+    if os.fork():
+        return
+    lockfile.close()
+    for script in container_props['initscripts']:
+        _run_init(container_props['name'], script['name'], script['content'])
 
 
 def _create_container(container_props):
@@ -311,16 +318,16 @@ def _create_container(container_props):
     mem = container_props.get('max_memory')
     if mem:
         args.append('--config=limits.memory=%dMB' % (mem / 1000000))
-    init = container_props.get('init_script')
-    if init:
-        args.append('--config=user.cya_init=%s' % init)
+    init = container_props.get('initscripts', [])
+    for name, content in init:
+        args.append('--config=user.cya_%s=%s' % (name, content))
 
     subprocess.check_call(args)
     _create_shared_mounts(container_props)
     lxc_container_start({'name': container_props['name']}, container_props)
 
     if init:
-        _run_init(container_props)
+        _run_init_scripts(container_props)
 
 
 def _update_container(container):

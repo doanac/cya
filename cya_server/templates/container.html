@@ -18,12 +18,15 @@
 	</td></tr>
   </table>
 
-  <h3>Init Script</h3>
+  <h3>Init Scripts</h3>
 {% if not session.openid %}
 You must be logged in to see the init script
 {% else %}
+  {% for script in scripts %}
+  <h4>{{script.name}}</h4>
   <pre>
-{{container.init_script}}
+{{script.content}}
   </pre>
+  {% endfor %}
 {% endif %}
 {% endblock %}
