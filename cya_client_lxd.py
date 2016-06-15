@@ -178,7 +178,10 @@ def _post_logs(container, logname, data):
     headers['content-type'] = 'text/plain'
     resource = '/api/v1/host/%s/container/%s/logs/%s' % (
         config.get('cya', 'hostname'), container, logname)
-    return _http_resp(resource, headers, data, method='POST')
+    try:
+        return _http_resp(resource, headers, data, method='POST')
+    except:
+        return False
 
 
 def _host_props():
@@ -264,8 +267,12 @@ def _create_shared_mounts(container_props):
 
 def _run_init(container_name, name, script):
     log.info('Running init script: %s', name)
-    buff = '\n== CYA-INIT-SCRIPT(%s) STARTED at: %s\n' % (name, time.asctime())
-    _post_logs(container_name, name, buff.encode())
+    buff = ('\n== CYA-INIT-SCRIPT(%s) STARTED at: %s\n' % (
+        name, time.asctime())).encode()
+    if _post_logs(container_name, name, buff):
+        buff = b''
+    else:
+        log.error('Unable to post log start, will try again')
     p = subprocess.Popen(['lxc', 'exec', container_name, 'bash'],
                          stdin=subprocess.PIPE, stderr=subprocess.STDOUT,
                          stdout=subprocess.PIPE, close_fds=True)
@@ -276,7 +283,6 @@ def _run_init(container_name, name, script):
     RONLY = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
     poller.register(p.stdout.fileno(), RONLY)
     last_update = 0
-    buff = b''
     while poller:
         events = poller.poll()
         for fd, flag in events:
@@ -286,16 +292,19 @@ def _run_init(container_name, name, script):
                 now = time.time()
                 # update server log ever 20s or 8k bytes
                 if now - last_update > 20 or len(buff) > 8192:
-                    _post_logs(container_name, name, buff)
-                    last_update = now
-                    buff = b''
+                    if _post_logs(container_name, name, buff):
+                        last_update = now
+                        buff = b''
+                    else:
+                        log.error('Unable to update log, will try again')
             else:
                 poller = None
     p.wait()
     buff += b'\n== RC=%d' % p.returncode
     buff = '\n== CYA-INIT-SCRIPT(%s) ENDED at: %s RC=%d\n' % (
         name, time.asctime(), p.returncode)
-    _post_logs(container_name, name, buff.encode())
+    if not _post_logs(container_name, name, buff.encode()):
+        log.error('Unable to update script finish log, ignoring')
     return p.returncode
 
 
@@ -344,21 +353,6 @@ def _upgrade_client(version):
         f.flush()
     args = [__file__, 'register', config.get('cya', 'server_url'), version]
     os.execv(args[0], args)
-
-
-def _update_logs(ct, cache):
-    for logname in ('cloud-init.log', 'cloud-init-output.log'):
-        logfile = os.path.join(
-            '/var/lib/lxd/containers', ct['name'], 'rootfs/var/log', logname)
-        if os.path.exists(logfile):
-            cur_pos = cache.setdefault(ct['name'], {}).get(logname, 0)
-            with open(logfile) as f:
-                if os.fstat(f.fileno()).st_size > cur_pos:
-                    log.debug('appending %s log for %s', logname, ct['name'])
-                    f.seek(cur_pos)
-                    name = os.path.splitext(logname)[0]
-                    _post_logs(ct['name'], name, f.read())
-                    cache[ct['name']][logname] = f.tell()
 
 
 def _handle_start_stop(container, container_props):
@@ -427,7 +421,6 @@ def _handle_existing(lxc_containers, container_props, names):
             changed = _handle_start_stop(container, container_props)
             if changed or _handle_ips(container, cache):
                 _update_container(container)
-            _update_logs(container, cache)
 
     with open(container_cached, 'w') as f:
         json.dump(cache, f)
