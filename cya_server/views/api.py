@@ -113,7 +113,10 @@ def host_container_get(name, c):
 @host_authenticated
 def host_container_update(name, c):
     c = hosts.get(name).containers.get(c)
-    c.update(request.json)
+    if c.one_shot and request.json.get('state') == 'DESTROY':
+        c.delete()
+    else:
+        c.update(request.json)
     return jsonify({})
 
 

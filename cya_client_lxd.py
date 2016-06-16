@@ -101,7 +101,8 @@ def lxd_container_get_max_memory(name):
 
 def lxd_image_info(container):
     image = container['config']['volatile.base_image']
-    image = subprocess.check_output(['lxc', 'image', 'show', image]).decode()
+    image = subprocess.check_output(
+        ['lxc', 'image', 'show', image], stderr=subprocess.DEVNULL).decode()
     image = yaml.load(image)
     os = image['properties'].get('os', image['properties'].get('distribution'))
     return os, image['properties']['release']
@@ -316,6 +317,13 @@ def _run_init_scripts(container_props):
     for script in container_props['initscripts']:
         _run_init(container_props['name'], script['name'], script['content'])
 
+    if container_props.get('one_shot'):
+        data = {'state': 'DESTROY'}
+        _patch('/api/v1/host/%s/container/%s/' %
+               (config.get('cya', 'hostname'), container_props['name']), data)
+        _handle_dels([container_props['name']])
+        sys.exit(0)
+
 
 def _create_container(container_props):
     log.debug('container props: %r', container_props)
@@ -392,7 +400,7 @@ def _handle_adds(container_props, to_add):
         _update_container(lxd_containers()[x])
 
 
-def _handle_dels(container_props, to_del):
+def _handle_dels(to_del):
     for x in to_del:
         print('Deleting container: %s' % x)
         subprocess.check_call(['lxc', 'delete', '--force', x])
@@ -415,7 +423,7 @@ def _handle_existing(lxc_containers, container_props, names):
     for name in names:
         container = lxc_containers[name]
         if container_props[name].get('re_create'):
-            _handle_dels(container_props, [name])
+            _handle_dels([name])
             _handle_adds(container_props, [name])
         else:
             changed = _handle_start_stop(container, container_props)
@@ -442,7 +450,7 @@ def _check(args):
     local_names = set(containers.keys())
 
     _handle_adds(rem_containers, rem_names - local_names)
-    _handle_dels(rem_containers, local_names - rem_names)
+    _handle_dels(local_names - rem_names)
     _handle_existing(containers, rem_containers, rem_names & local_names)
 
 
