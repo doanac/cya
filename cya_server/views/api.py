@@ -1,6 +1,6 @@
 import functools
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 from cya_server import app, settings
 from cya_server.models import (
@@ -61,6 +61,7 @@ def user_authenticated(f):
             resp = jsonify({'Message': 'Incorrect API key for user'})
             resp.status_code = 401
             return resp
+        g.user = user
         return f(*args, **kwargs)
     return wrapper
 
@@ -74,7 +75,9 @@ def _model_error_handler(error):
 @user_authenticated
 def container_create():
     name = request.json.pop('name')
+    request.json['requested_by'] = g.user.nickname
     container_requests.create(name, request.json)
+    print("FOO")
     resp = jsonify({})
     resp.status_code = 202
     return resp

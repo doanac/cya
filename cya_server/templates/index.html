@@ -32,12 +32,13 @@
   <h2>Queued  Requests</h2>
   <table class="table table-striped">
   <tr>
-    <th>Name</th><th>Date Requested</th>
+    <th>Name</th><th>Date Requested</th><th>Requested By</th>
   </tr>
   {% for r in requests %}
   <tr>
     <td>{{r.name}}</td>
     <td>{{r.requested_str}}</td>
+    <td>{{r.requested_by}}</td>
   </tr>
   {% endfor %}
   </table>

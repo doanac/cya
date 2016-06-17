@@ -30,8 +30,8 @@ class InitScript(Model):
 
 class Container(Model):
     FIELDS = [
-        Field('template', data_type=str),
-        Field('release', data_type=str),
+        Field('template', data_type=str, required=False),
+        Field('release', data_type=str, required=False),
         Field('init_script', data_type=str, required=False),
         Field('date_requested', int, required=False),
         Field('date_created', int, required=False),
@@ -41,6 +41,7 @@ class Container(Model):
         Field('keep_running', data_type=bool, def_value=True, required=False),
         Field('ips', data_type=str, required=False),
         Field('one_shot', data_type=bool, def_value=False, required=False),
+        Field('requested_by', data_type=str, required=False),
     ]
     CHILDREN = [ContainerMount, InitScript]
 
@@ -198,29 +199,3 @@ def _container_request_handle(host):
         host.containers.create(r.name, r.to_dict())
         r.delete()
 container_requests.handle = _container_request_handle
-
-
-def create_container(name, template, release, max_mem, init_script,
-                     mounts=None):
-    Container.validate_template_release(template, release)
-    data = {
-        'template': template,
-        'release': release,
-        'max_memory': max_mem,
-        'date_requested': int(time.time()),
-        'state': 'QUEUED',
-    }
-    if init_script:
-        data['initscripts'] = [{'name': 'init', 'content': init_script}]
-    if mounts:
-        container_mounts = []
-        for ss_name, directory in mounts:
-            ss = shared_storage.get(ss_name)
-            container_mounts.append({
-                'name': ss.name,
-                'type': ss.type,
-                'source': ss.source,
-                'directory': directory
-            })
-        data['containermounts'] = container_mounts
-    container_requests.create(name, data)

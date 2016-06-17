@@ -1,3 +1,5 @@
+import time
+
 from flask import (
     g, flash, redirect, render_template, request, Response, session, url_for
 )
@@ -5,8 +7,7 @@ from flask.ext.openid import OpenID
 
 from cya_server import app, settings
 from cya_server.models import (
-    client_version, container_requests, create_container, hosts,
-    shared_storage, users)
+    client_version, container_requests, hosts, shared_storage, users)
 
 oid = OpenID(app, settings.OPENID_STORE, safe_roots=[])
 
@@ -203,18 +204,32 @@ def ui_create_container():
 
     if request.method == 'POST':
         template, release = request.form['container-type'].split(':')
-        max_mem = int(request.form['max-memory']) * 1000000000
+        data = {
+            'requested_by': g.user.nickname,
+            'state': 'QUEUED',
+            'date_requested': int(time.time()),
+            'template': template,
+            'release': release,
+            'max_memory': int(request.form['max-memory']) * 1000000000,
+            'containermounts': [],
+        }
         init_script = request.form['init-script'].replace('\r', '')
+        if init_script:
+            data['initscripts'] = [{'name': 'init', 'content': init_script}]
 
-        ss = []
+        print("ANDY", data)
         for x in request.form.keys():
             if x[:3] == 'ss_':
                 directory = request.form[x]
                 if directory:
-                    ss.append((x[3:], directory))
-
-        create_container(
-            request.form['name'], template, release, max_mem, init_script, ss)
+                    ss = shared_storage.get(x[3:])
+                    data['containermounts'].append({
+                        'name': ss.name,
+                        'type': ss.type,
+                        'source': ss.source,
+                        'directory': directory,
+                    })
+        container_requests.create(request.form['name'], data)
         flash('Container requested')
         return redirect(url_for('index'))
 
