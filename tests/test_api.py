@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from cya_server import app
-from cya_server.models import hosts
+from cya_server.models import container_requests, hosts, users
 
 h1 = {
     'name': 'host_1',
@@ -25,13 +25,16 @@ class ApiTests(unittest.TestCase):
         self.modelsdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.modelsdir)
         hosts._model_dir = os.path.join(self.modelsdir, 'hosts')
+        users._model_dir = os.path.join(self.modelsdir, 'users')
+        container_requests._model_dir = os.path.join(self.modelsdir, 'reqs')
         os.mkdir(hosts._model_dir)
         app.config['TESTING'] = True
         self.app = app.test_client()
 
-    def post_json(self, url, data, status_code=201):
+    def post_json(self, url, data, status_code=201, headers=None):
         data = json.dumps(data)
-        resp = self.app.post(url, data=data, content_type='application/json')
+        resp = self.app.post(
+            url, data=data, headers=headers, content_type='application/json')
         self.assertEqual(status_code, resp.status_code)
         return resp
 
@@ -80,6 +83,28 @@ class ApiTests(unittest.TestCase):
         h = list(hosts.list())
         self.assertEqual(0, len(h))
 
+    def test_container_request_auth(self):
+        users.create('a@b.com', {'openid': 'oid', 'approved': True,
+                                 'nickname': 'nn', 'api_key': 'blahBlah'})
+        u = users.get('a@b.com')
+        auth_headers = [('Authorization', 'Token %s:%s' % (u.name, 'bl'))]
+        self.post_json('/api/v1/container_request/', {}, 401)
+        self.post_json('/api/v1/container_request/', {}, 401, auth_headers)
+
+    def test_container_request(self):
+        data = {
+            'name': 'container_foo',
+            'template': 'ubuntu',
+            'release': 'xenial',
+        }
+        users.create('a@b.com', {'openid': 'oid', 'approved': True,
+                                 'nickname': 'nn', 'api_key': 'blahBlah'})
+        u = users.get('a@b.com')
+        auth_headers = [('Authorization', 'Token %s:%s' % (u.name, u.api_key))]
+        self.post_json('/api/v1/container_request/', data, 202, auth_headers)
+
+        queue = list(container_requests.list())
+        self.assertEqual(['container_foo'], queue)
 
 if __name__ == '__main__':
     unittest.main()

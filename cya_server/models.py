@@ -1,6 +1,8 @@
 import datetime
 import os
+import random
 import time
+import string
 
 from cya_server.settings import (
     MODELS_DIR, CONTAINER_TYPES, CLIENT_SCRIPT)
@@ -28,8 +30,8 @@ class InitScript(Model):
 
 class Container(Model):
     FIELDS = [
-        Field('template', data_type=str, required=False),
-        Field('release', data_type=str, required=False),
+        Field('template', data_type=str),
+        Field('release', data_type=str),
         Field('init_script', data_type=str, required=False),
         Field('date_requested', int, required=False),
         Field('date_created', int, required=False),
@@ -142,6 +144,7 @@ class User(Model):
         Field('openid', data_type=str),
         Field('approved', data_type=bool, def_value=False),
         Field('admin', data_type=bool, def_value=False, required=False),
+        Field('api_key', data_type=str, required=False)
     ]
     CHILDREN = [
         InitScript,
@@ -172,6 +175,12 @@ def _get_user_by_openid(openid):
             return x
     return None
 users.get_user_by_openid = _get_user_by_openid
+
+
+def _generate_api_key():
+    chars = string.ascii_letters + string.digits + '!@#$%^&*~-+'
+    return ''.join(random.choice(chars) for _ in range(32))
+users.generate_api_key = _generate_api_key
 
 
 def _container_request_handle(host):

@@ -4,7 +4,7 @@ from flask import jsonify, request
 
 from cya_server import app, settings
 from cya_server.models import (
-    client_version, container_requests, hosts, ModelError, SecretField)
+    client_version, container_requests, hosts, users, ModelError, SecretField)
 
 
 def _is_host_authenticated(host):
@@ -38,9 +38,46 @@ def host_authenticated(f):
     return wrapper
 
 
+def user_authenticated(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        key = request.headers.get('Authorization', None)
+        if not key:
+            resp = jsonify({'Message': 'No Authorization header provided'})
+            resp.status_code = 401
+            return resp
+        parts = key.split(' ')
+        if len(parts) != 2 or parts[0] != 'Token':
+            resp = jsonify({'Message': 'Invalid Authorization header'})
+            resp.status_code = 401
+            return resp
+        parts = parts[1].split(':')
+        if len(parts) != 2:
+            resp = jsonify({'Message': 'Invalid Authorization header'})
+            resp.status_code = 401
+            return resp
+        user = users.get(parts[0].strip())
+        if parts[1].strip() != user.api_key:
+            resp = jsonify({'Message': 'Incorrect API key for user'})
+            resp.status_code = 401
+            return resp
+        return f(*args, **kwargs)
+    return wrapper
+
+
 @app.errorhandler(ModelError)
 def _model_error_handler(error):
     return str(error) + '\n', error.status_code
+
+
+@app.route('/api/v1/container_request/', methods=['POST'])
+@user_authenticated
+def container_create():
+    name = request.json.pop('name')
+    container_requests.create(name, request.json)
+    resp = jsonify({})
+    resp.status_code = 202
+    return resp
 
 
 @app.route('/api/v1/host/', methods=['GET'])

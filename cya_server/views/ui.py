@@ -58,6 +58,7 @@ def create_user():
         'openid': session['openid'],
         'approved': approved,
         'admin': admin,
+        'api_key': users.generate_api_key(),
     })
     flash('Profile successfully created')
     return redirect(oid.get_next_url())
