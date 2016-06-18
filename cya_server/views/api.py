@@ -106,7 +106,7 @@ def host_create():
 @host_authenticated
 def host_update(name):
     if 'enlisted' in request.json:
-        raise ModelError('"enlisted" field cannot be updated via API')
+        raise ModelError('"enlisted" field cannot be updated via API', 403)
 
     hosts.get(name).update(request.json)
     return jsonify({})

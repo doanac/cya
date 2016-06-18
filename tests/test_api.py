@@ -38,12 +38,12 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status_code, resp.status_code)
         return resp
 
-    def patch_json(self, url, data, api_key):
+    def patch_json(self, url, data, api_key, status_code=200):
         data = json.dumps(data)
         headers = [('Authorization', 'Token ' + api_key)]
         resp = self.app.patch(
             url, data=data, headers=headers, content_type='application/json')
-        self.assertEqual(200, resp.status_code)
+        self.assertEqual(status_code, resp.status_code)
 
     def get_json(self, url, status_code=200):
         resp = self.app.get(url)
@@ -72,6 +72,12 @@ class ApiTests(unittest.TestCase):
         self.patch_json(resp.location, {'cpu_total': 123}, h1['api_key'])
         h = hosts.get('host_1')
         self.assertEqual(123, h.cpu_total)
+
+    def test_update_enlisted(self):
+        """Ensure hosts can't update this attribute"""
+        resp = self.post_json('/api/v1/host/', h1)
+        self.assertEqual('http://localhost/api/v1/host/host_1/', resp.location)
+        self.patch_json(resp.location, {'enlisted': True}, h1['api_key'], 403)
 
     def test_delete_host(self):
         resp = self.post_json('/api/v1/host/', h1)
