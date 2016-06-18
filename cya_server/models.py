@@ -106,6 +106,7 @@ class Host(Model):
         Field('cpu_total', data_type=int),
         Field('cpu_type', data_type=str),
         Field('enlisted', data_type=bool, def_value=False, required=False),
+        Field('max_containers', data_type=int, def_value=0, required=False),
         SecretField('api_key'),
     ]
     CHILDREN = [
@@ -185,14 +186,26 @@ users.generate_api_key = _generate_api_key
 
 
 def _container_request_handle(host):
-    '''Dumb logic but find host with least number of containers'''
+    '''Dumb logic but find host with least number of containers.
+       It also honors allowing max_containers on a host.
+    '''
+    if host.max_containers and host.max_containers <= host.containers.count():
+        return  # no point in checking
+
     requests = list(container_requests.list())
     if not requests:
         return
-    h = [hosts.get(x) for x in hosts.list()]
-    h = [x for x in h if x.online]
-    h = sorted(h, key=lambda x: len(list(x.containers.list())))
-    match = host.name == h[0].name
+    candidates = []
+    for h in hosts.list():
+        h = hosts.get(h)
+        h.count_cache = h.containers.count()
+        if h.online and (h.max_containers == 0 or
+                         h.count_cache < h.max_containers):
+                candidates.append(h)
+
+    candidates = sorted(candidates, key=lambda x: x.count_cache)
+    candidates = sorted(candidates, key=lambda x: -1 * x.mem_total)
+    match = candidates and host.name == candidates[0].name
 
     if match:
         r = container_requests.get(requests[0])

@@ -77,6 +77,9 @@ class ModelManager(object):
             else:
                 raise
 
+    def count(self):
+        return len(list(self.list()))
+
     def get(self, name):
         return self._model_class(name, os.path.join(self._model_dir, name))
 

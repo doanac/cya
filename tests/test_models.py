@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import unittest
 
-from cya_server.models import hosts, SecretField
+from cya_server.models import container_requests, hosts, SecretField
 
 h1 = {
     'distro_id': 'ubuntu',
@@ -23,12 +23,12 @@ class TestModels(unittest.TestCase):
         os.mkdir(hosts._model_dir)
 
     def test_empty_get(self):
-        self.assertEqual(0, len(list(hosts.list())))
+        self.assertEqual(0, hosts.count())
 
     def test_empty_update(self):
         hosts.create('host_1', h1)
 
-        self.assertEqual(1, len(list(hosts.list())))
+        self.assertEqual(1, hosts.count())
         self.assertEqual('ubuntu', hosts.get('host_1').distro_id)
 
     def test_container_create(self):
@@ -37,7 +37,7 @@ class TestModels(unittest.TestCase):
 
         hosts.create('host_1', h)
         h = hosts.get('host_1')
-        self.assertEqual(1, len(list(h.containers.list())))
+        self.assertEqual(1, h.containers.count())
         self.assertEqual('foo', h.containers.get('c1').template)
         self.assertEqual('c1', h.to_dict()['containers'][0]['name'])
 
@@ -55,3 +55,71 @@ class TestModels(unittest.TestCase):
         h = hosts.get('host_1')
         self.assertNotEqual('123', h.api_key)
         self.assertTrue(SecretField.verify('123', h.api_key))
+
+
+class TestScheduler(unittest.TestCase):
+    def setUp(self):
+        self.modelsdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.modelsdir)
+        hosts._model_dir = os.path.join(self.modelsdir, 'hosts')
+        container_requests._model_dir = os.path.join(self.modelsdir, 'reqs')
+        os.mkdir(hosts._model_dir)
+        os.mkdir(container_requests._model_dir)
+
+        hosts.create('host1', h1)
+        hosts.create('host2', h1)
+        self.host1 = hosts.get('host1')
+        self.host2 = hosts.get('host2')
+
+        self.container_data = {
+            'template': 'ubuntu',
+            'release': 'xenial',
+        }
+
+    def test_offline(self):
+        """The scheduler is okay if everything is offline"""
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(1, container_requests.count())
+
+    def test_one_online(self):
+        """The scheduler finds one host online"""
+        self.host1.ping()
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(0, container_requests.count())
+        containers = list(self.host1.containers.list())
+        self.assertEqual(1, len(containers))
+        self.assertEqual('container_foo', containers[0])
+
+    def test_max_containers(self):
+        """Ensure we honor max_containers"""
+        self.host1.ping()
+        self.host1.update({'max_containers': 1})
+        self.host1 = hosts.get(self.host1.name)
+
+        # create one container
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(0, container_requests.count())
+        self.assertEqual(1, self.host1.containers.count())
+
+        # create 2nd container, will stay stuck in queued
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(1, container_requests.count())
+        self.assertEqual(1, self.host1.containers.count())
+
+    def test_mem_total(self):
+        """Ensure we honor max_containers"""
+        self.host1.ping()
+        self.host1.update({'max_containers': 1, 'mem_total': 6})
+        self.host2.ping()
+        self.host2.update({'max_containers': 1, 'mem_total': 5})
+        self.host1 = hosts.get(self.host1.name)
+
+        # create one container, it should go to host1 (more memory)
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(0, container_requests.count())
+        self.assertEqual(1, self.host1.containers.count())
