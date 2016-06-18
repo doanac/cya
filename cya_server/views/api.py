@@ -77,7 +77,6 @@ def container_create():
     name = request.json.pop('name')
     request.json['requested_by'] = g.user.nickname
     container_requests.create(name, request.json)
-    print("FOO")
     resp = jsonify({})
     resp.status_code = 202
     return resp
