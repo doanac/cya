@@ -12,6 +12,7 @@ h1 = {
     'mem_total': 5,
     'cpu_total': 5,
     'cpu_type': 'arm',
+    'enlisted': True,
 }
 
 
@@ -91,6 +92,16 @@ class TestScheduler(unittest.TestCase):
         containers = list(self.host1.containers.list())
         self.assertEqual(1, len(containers))
         self.assertEqual('container_foo', containers[0])
+
+    def test_enlisted(self):
+        """The scheduler ignores hosts not enlisted"""
+        self.host1.ping()
+        self.host1.update({'enlisted': False})
+        self.host1 = hosts.get(self.host1.name)
+        container_requests.create('container_foo', self.container_data)
+        container_requests.handle(self.host1)
+        self.assertEqual(1, container_requests.count())
+        self.assertEqual(0, self.host1.containers.count())
 
     def test_max_containers(self):
         """Ensure we honor max_containers"""

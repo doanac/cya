@@ -189,7 +189,8 @@ def _container_request_handle(host):
     '''Dumb logic but find host with least number of containers.
        It also honors allowing max_containers on a host.
     '''
-    if host.max_containers and host.max_containers <= host.containers.count():
+    if not host.enlisted or (host.max_containers and
+                             host.max_containers <= host.containers.count()):
         return  # no point in checking
 
     requests = list(container_requests.list())
@@ -199,8 +200,8 @@ def _container_request_handle(host):
     for h in hosts.list():
         h = hosts.get(h)
         h.count_cache = h.containers.count()
-        if h.online and (h.max_containers == 0 or
-                         h.count_cache < h.max_containers):
+        if h.enlisted and h.online and (h.max_containers == 0 or
+                                        h.count_cache < h.max_containers):
                 candidates.append(h)
 
     candidates = sorted(candidates, key=lambda x: x.count_cache)
