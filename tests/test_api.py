@@ -106,7 +106,7 @@ class ApiTests(unittest.TestCase):
         queue = list(container_requests.list())
         self.assertEqual(['container_foo'], queue)
         c = container_requests.get('container_foo')
-        self.assertEqual('a@b.com', c.requested_by)
+        self.assertEqual('nn', c.requested_by)
 
 if __name__ == '__main__':
     unittest.main()
