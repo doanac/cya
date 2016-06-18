@@ -51,7 +51,7 @@ def create_user():
         return redirect(url_for('index'))
     approved = settings.AUTO_APPROVE_USER
     admin = False
-    if len(list(users.list())) == 0:
+    if users.count() == 0:
         approved = True
         admin = True
     users.create(request.values['email'], {
