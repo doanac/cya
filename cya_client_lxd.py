@@ -196,6 +196,7 @@ def _host_props():
         'distro_id': distro,
         'distro_release': release,
         'distro_codename': name,
+        'max_containers': config.getint('cya', 'max_containers', fallback=0),
     }
 
 

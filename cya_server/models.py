@@ -208,7 +208,9 @@ def _container_request_handle(host):
     match = candidates and host.name == candidates[0].name
 
     if match:
-        r = container_requests.get(requests[0])
-        host.containers.create(r.name, r.to_dict())
-        r.delete()
+        # use os.rename which is atomic
+        src = os.path.join(container_requests._model_dir, requests[0])
+        dst = os.path.join(host.containers._model_dir, requests[0])
+        os.mkdir(host.containers._model_dir)
+        os.rename(src, dst)
 container_requests.handle = _container_request_handle
