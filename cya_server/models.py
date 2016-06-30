@@ -204,14 +204,17 @@ def _container_request_handle(host):
                                         h.count_cache < h.max_containers):
                 candidates.append(h)
 
-    candidates = sorted(candidates, key=lambda x: x.count_cache)
     candidates = sorted(candidates, key=lambda x: -1 * x.mem_total)
+    candidates = sorted(candidates, key=lambda x: x.count_cache)
     match = candidates and host.name == candidates[0].name
 
     if match:
         # use os.rename which is atomic
         src = os.path.join(container_requests._model_dir, requests[0])
         dst = os.path.join(host.containers._model_dir, requests[0])
-        os.mkdir(host.containers._model_dir)
+        try:
+            os.mkdir(host.containers._model_dir)
+        except FileExistsError:
+            pass
         os.rename(src, dst)
 container_requests.handle = _container_request_handle
